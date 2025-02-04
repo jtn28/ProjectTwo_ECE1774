@@ -1,6 +1,7 @@
 from Bus import Bus  # Ensure Bus.py is correctly set up
 
 
+import Bus as Bus
 class Transformer:
     """Represents a transformer in the power system."""
 
