@@ -1,3 +1,4 @@
+import Bus as Bus
 class Transformer:
     """Represents a transformer in the power system."""
 
