@@ -31,8 +31,9 @@ class Geometry:
         return f"Geometry(name={self.name}, Deq={self.Deq:.4f})"
 
 # Test instance
-geom1 = Geometry("Test Config", 0, 0, 18.5, 0, 37, 0)
+if __name__ == "__main__":
+    geom1 = Geometry("Test Config", 0, 0, 18.5, 0, 37, 0)
 
-# Print attributes
-print(geom1)  # Should display Geometry(name=Test Config, Deq=<computed value>)
-print(f"Deq Calculation: {geom1.Deq}")
+    # Print attributes
+    print(geom1)  # Should display Geometry(name=Test Config, Deq=<computed value>)
+    print(f"Deq Calculation: {geom1.Deq}")
