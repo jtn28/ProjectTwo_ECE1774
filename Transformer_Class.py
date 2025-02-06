@@ -18,7 +18,7 @@ class Transformer:
 
     def calc_impedance(self):
         """Calculates the transformer impedance in per unit."""
-        zt_pu = (self.impedance_percent / 100) * (self.power_rating / (self.bus1.base_kv ** 2))
+        zt_pu = (self.impedance_percent / 100) * (self.power_rating / (self.bus1.baseKV ** 2))
         return complex(zt_pu, zt_pu * self.x_over_r_ratio)
 
     def calc_admittance(self):
