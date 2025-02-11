@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from Bundle import Bundle
 from Bus import Bus
 from Geometry import Geometry
@@ -43,7 +44,10 @@ class TransmissionLine:
         Y12 = -1 / self.series_impedance
         Y21 = Y12
         Y22 = Y11
-        return [[Y11, Y12], [Y21, Y22]]
+        return pd.DataFrame({"Y1": [Y11, Y12], "Y2":[Y21, Y22]})
+
+    def __repr__(self):
+        return f"TransmissionLine(name={self.name}, Bus1={self.bus1}, Bus2={self.bus2})"
 
 if __name__ == '__main__':
     # Running a test transmission line
@@ -56,4 +60,4 @@ if __name__ == '__main__':
     impedance = test_line.calculate_impedance()
     admittance = test_line.calculate_admittance()
     matrix = test_line.calculate_admittance_matrix()
-    print(f'impedance: {impedance:.4f}, admittance: {admittance}, matrix: {matrix}')
+    print(f'impedance: {impedance:.4f}, admittance: {admittance}, matrix: \n{matrix}')

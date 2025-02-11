@@ -11,6 +11,9 @@ class Bus:
         self.index = Bus.counter
         Bus.counter += 1
 
+    def __repr__(self):
+        return f"Bus(name={self.name}, baseKV={self.baseKV})"
+
 if __name__ == '__main__':
     # Test creation of object
     Bus1 = Bus("Bus1", 20)

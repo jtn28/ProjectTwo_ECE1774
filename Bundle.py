@@ -40,6 +40,9 @@ class Bundle:
             print("Invalid bundle size, choose a value between 1 and 4")
             return 0
 
+    def __repr__(self):
+        return f"Bundle(name={self.name}, Dsc={self.calculate_dsc():.2f}, Dsl={self.calculate_dsl():.2f})"
+
 if __name__ == "__main__":
     # Just runs a test with all 4 different potential bundles, using a cardinal conductor for this
     cardinal = Conductor("Cardinal", 1.196 / 12, 0.0403, 0.1128, 1010)
