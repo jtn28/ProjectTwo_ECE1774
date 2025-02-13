@@ -21,4 +21,5 @@ if __name__ == '__main__':
     print(Bus1.name, Bus1.baseKV, Bus1.index)
     print(Bus2.name, Bus2.baseKV, Bus2.index)
     print(Bus1.counter, Bus2.counter)
+    print("temp")
 
