@@ -47,9 +47,11 @@ class TransmissionLine:
         Y12 = -1 / self.series_impedance
         Y21 = Y12
         Y22 = Y11
-        return pd.DataFrame({"Bus1": [Y11, Y12], "Bus2":[Y21, Y22]})
+        end_matrix = [[Y11,Y12],[Y21,Y22]]
+        return pd.DataFrame(end_matrix, index=[self.bus1.name, self.bus2.name], columns=[self.bus1.name, self.bus2.name])
 
-    def calculate_y_prim(self):
+    # Changing name to ensure it is consistent with the same call in the transformer class
+    def calc_y_primitive(self):
         z_pu = self.calculate_zpu()
         y_pu = self.calculate_ypu()
 
@@ -57,7 +59,8 @@ class TransmissionLine:
         Y12 = -1 / z_pu
         Y21 = Y12
         Y22 = Y11
-        return pd.DataFrame({"Bus1": [Y11, Y12], "Bus2": [Y21, Y22]})
+        end_matrix = [[Y11, Y12], [Y21, Y22]]
+        return pd.DataFrame(end_matrix, index=[self.bus1.name, self.bus2.name], columns=[self.bus1.name, self.bus2.name])
 
     def __repr__(self):
         return f"TransmissionLine(name={self.name}, Bus1={self.bus1}, Bus2={self.bus2})"

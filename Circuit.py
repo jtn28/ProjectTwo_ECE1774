@@ -1,3 +1,5 @@
+import pandas as pd
+import numpy as np
 from Bus import Bus
 from Conductor import Conductor
 from Bundle import Bundle
@@ -29,6 +31,30 @@ class Circuit:
         instance = (transmission_line.name, transmission_line.bus1, transmission_line.bus2)
         self.transmission_lines[instance] = transmission_line
         return
+
+    # For Creating the big Y Bus, use a for loop for each element, then grab the y primitive, then add it
+    # to the y bus matrix, and keep going, use tags to know how to orient the whole thing
+    def calc_ybus(self):
+        bus_names = list(self.buses.keys())
+        y_bus = pd.DataFrame(0, index=bus_names, columns=bus_names, dtype=complex)
+        for item in self.transformers:
+            prim = self.transformers[item].calc_y_primitive()
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        for item in self.transmission_lines:
+            prim = self.transmission_lines[item].calc_y_primitive()
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+
+
+
+
+        print(y_bus)
+        return y_bus
 
 
 if __name__ == '__main__':
@@ -72,3 +98,5 @@ if __name__ == '__main__':
           test_circuit.transmission_lines[Tline_key].bus2,
           test_circuit.transmission_lines[Tline_key].bundle, test_circuit.transmission_lines[Tline_key].geometry,
           test_circuit.transmission_lines[Tline_key].length)
+
+    test_circuit.calc_ybus()
