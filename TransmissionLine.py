@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from Settings import Settings
 from Bundle import Bundle
 from Bus import Bus
 from Geometry import Geometry
@@ -14,9 +15,9 @@ class TransmissionLine:
         self.bundle = bundle
         self.geometry = geometry
         self.length = length
-        self.f = 60  # Going to keep this a constant for now, but it can be change later if needed
+        self.f = Settings.frequency  #
         self.Vbase = bus1.baseKV * 1000
-        self.Sbase = 100e6 # Temporarily, will update for milestone 5
+        self.Sbase = Settings.base_power #
         self.series_impedance = self.calculate_impedance()
         self.shunt_admittance = self.calculate_admittance()
         self.admittance_matrix = self.calculate_admittance_matrix()
