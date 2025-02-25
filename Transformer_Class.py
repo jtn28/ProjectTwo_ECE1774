@@ -1,4 +1,5 @@
 from Bus import Bus  # Ensure Bus.py is correctly set up
+from Settings import Settings
 import pandas as pd
 import numpy as np
 
@@ -6,7 +7,7 @@ class Transformer:
     """Represents a transformer in the power system using per-unit calculations."""
 
     def __init__(self, name: str, bus1: Bus, bus2: Bus, power_rating: float, impedance_percent: float,
-                 x_over_r_ratio: float, base_power: float = 100):
+                 x_over_r_ratio: float, base_power: float = Settings.base_power * 1e-6):
         """
         Initializes a transformer instance.
 
@@ -16,7 +17,7 @@ class Transformer:
         power_rating (float): Transformer rating in MVA.
         impedance_percent (float): Transformer impedance in percentage.
         x_over_r_ratio (float): Reactance-to-resistance ratio.
-        base_power (float): System base power in MVA (default: 100).
+        base_power (float): System base power in MVA (default: 100, pulled from settings file, with 1e-6 to compensate for settings being in VA not MVA).
         """
         self.name = name
         self.bus1 = bus1
