@@ -1,4 +1,4 @@
-from Conductor import Conductor
+from conductor import Conductor
 class Bundle:
     # Bundle class
     # Creating the init, needs to have a reference to the conductor class to function, will push for now
