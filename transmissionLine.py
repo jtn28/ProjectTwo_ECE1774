@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
-from Settings import Settings
-from Bundle import Bundle
-from Bus import Bus
-from Geometry import Geometry
-from Conductor import Conductor # Seems to be needed even though reference in Bundle
+from settings import Settings
+from bundle import Bundle
+from bus import Bus
+from geometry import Geometry
+from conductor import Conductor # Seems to be needed even though reference in Bundle
 
 class TransmissionLine:
 
@@ -77,5 +77,5 @@ if __name__ == '__main__':
     impedance = test_line.calculate_impedance()
     admittance = test_line.calculate_admittance()
     matrix = test_line.calculate_admittance_matrix()
-    matrix2 = test_line.calculate_y_prim()
+    matrix2 = test_line.calc_y_primitive()
     print(f'impedance: {impedance:.4f}, admittance: {admittance}, matrix: \n{matrix2}')
