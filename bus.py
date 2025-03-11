@@ -13,8 +13,8 @@ class Bus:
         if bus_type == 'Slack' or bus_type == 'PQ' or bus_type == 'PV':
             self.type = bus_type
         else:
-            print(f"Invalid bus type in Bus {Bus.counter}, bus_type input variable was {bus_type}, setting bus_type to null")
-            self.type = 'null'
+            print(f"Invalid bus type in Bus {Bus.counter}, bus_type input variable was {bus_type}, setting bus_type to PQ")
+            self.type = 'PQ'
         # Defining and incrementing the bus index
         self.index = Bus.counter
         Bus.counter += 1
