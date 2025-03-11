@@ -14,6 +14,7 @@ class Circuit:
         self.transformers = {}
         self.transmission_lines = {}
 
+
     def add_bus(self, name:str, baseKV:float):
         bus = Bus(name, baseKV)
         self.buses[bus.name] = bus
@@ -52,9 +53,32 @@ class Circuit:
 
 
 
-
+        # Currently here to make it easier to debug, remove print statement the final implementation
         print(y_bus)
         return y_bus
+
+    def compute_power_injection(self, busDict, yBusFrame, voltageVector):
+        for bus in busDict:
+            pass
+
+
+        return
+
+    # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
+    def compute_power_mismatch(self, busDict, yBusFrame, voltageVector):
+        Vpu = np.ones(Bus.counter)
+        delta = np.zeros(Bus.counter)
+        busNames = list(busDict.keys())
+        for k in range(len(busNames)):
+        # 1. Loop through to get voltages and angles
+        # 2. Separate Call compute_power_injection (Will take voltages and angles)
+        # 3. loop through generators and loads to find given power
+            # Need to add those to main, do later
+        # Subtract the two values
+            Vpu[k] = busDict[busNames[k]].vpu
+            delta[k] = busDict[busNames[k]].delta
+
+        return
 
 
 if __name__ == '__main__':
