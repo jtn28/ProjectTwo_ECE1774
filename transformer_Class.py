@@ -79,7 +79,7 @@ class Transformer:
 
     def __repr__(self):
         """String representation of the transformer instance."""
-        return f"Transformer(name={self.name}, buses=({self.bus1.name}, {self.bus2.name}), Zpu=({self.rpu:.4f}, {self.xpu:.4f}))"
+        return f"Transformer(name={self.name}, buses=({self.bus1.name}, {self.bus2.name}), Zpu=({self.rpu:.4f}, 1j*{self.xpu:.4f}))"
 
 
 # Validation Code inside `__main__`
