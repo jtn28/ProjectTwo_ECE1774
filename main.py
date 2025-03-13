@@ -44,3 +44,4 @@ seven_circuit.add_transformer('T2', seven_circuit.buses.get("Bus6"), seven_circu
                                  200, 10.5, 12)
 seven_circuit.calc_ybus()
 print(list(seven_circuit.buses.keys()))
+print(seven_circuit.transformers)

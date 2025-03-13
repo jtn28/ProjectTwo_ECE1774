@@ -77,6 +77,7 @@ class Circuit:
         # Subtract the two values
             Vpu[k] = busDict[busNames[k]].vpu
             delta[k] = busDict[busNames[k]].delta
+        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
 
         return
 
