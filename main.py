@@ -1,10 +1,13 @@
+# need to create 7 node system here
 import pandas as pd
 import numpy as np
-from circuit import Circuit
+from Circuit import Circuit
 # Seem to need these, just circuit does not work
 from conductor import  Conductor
-from bundle import  Bundle
-from geometry import Geometry
+from Bus import Bus
+from Bundle import  Bundle
+from Geometry import Geometry
+from Settings import Settings
 
 pd.options.display.width = 0
 
