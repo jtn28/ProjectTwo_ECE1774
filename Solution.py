@@ -1,6 +1,6 @@
 import numpy as np
-from Bus import Bus
-from Settings import Settings
+from bus import Bus
+from settings import Settings
 
 class Solution:
     """Handles the verification of power injection calculations."""

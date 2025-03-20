@@ -1,11 +1,14 @@
 import pandas as pd
 import numpy as np
-from Bus import Bus
+from settings import Settings
+from bus import Bus
 from conductor import Conductor
-from Bundle import Bundle
-from Geometry import Geometry
+from bundle import Bundle
+from geometry import Geometry
 from transformer_Class import Transformer
 from transmissionLine import TransmissionLine
+from generator import Generator
+from load import Load
 
 class Circuit:
     def __init__(self, name:str):
@@ -13,10 +16,12 @@ class Circuit:
         self.buses = {}
         self.transformers = {}
         self.transmission_lines = {}
+        self.generators = {}
+        self.loads = {}
 
 
-    def add_bus(self, name:str, baseKV:float):
-        bus = Bus(name, baseKV)
+    def add_bus(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'Slack'):
+        bus = Bus(name, baseKV, vpu, delta, bus_type)
         self.buses[bus.name] = bus
         return
 
@@ -32,6 +37,19 @@ class Circuit:
         instance = (transmission_line.name, transmission_line.bus1, transmission_line.bus2)
         self.transmission_lines[instance] = transmission_line
         return
+
+    def add_generator(self, name:str, bus:Bus, voltage_setpoint:float, mw_setpoint:float):
+        generator = Generator(name, bus, voltage_setpoint, mw_setpoint)
+        instance = (generator.name, generator.bus)
+        self.generators[instance] = generator
+        self.buses[bus.name].real_power += mw_setpoint
+
+    def add_load(self, name: str, bus, real_power: float, reactive_power: float):
+        load = Load(name, bus, real_power, reactive_power)
+        instance = (load.name, load.bus)
+        self.loads[instance] = load
+        self.buses[bus.name].real_power += real_power
+        self.buses[bus.name].imaginary_power += reactive_power
 
     # For Creating the big Y Bus, use a for loop for each element, then grab the y primitive, then add it
     # to the y bus matrix, and keep going, use tags to know how to orient the whole thing
@@ -69,17 +87,50 @@ class Circuit:
         Vpu = np.ones(Bus.counter)
         delta = np.zeros(Bus.counter)
         busNames = list(busDict.keys())
+        # Get the results of the injection
+        injection_results = Settings.compute_power_injection(busDict, yBusFrame, voltageVector)
+
+        # Initialize mismatch arrays for real (P) and reactive (Q) power
+        real_power_mismatch = np.zeros(Bus.counter)
+        reactive_power_mismatch = np.zeros(Bus.counter)
         for k in range(len(busNames)):
         # 1. Loop through to get voltages and angles
         # 2. Separate Call compute_power_injection (Will take voltages and angles)
         # 3. loop through generators and loads to find given power
             # Need to add those to main, do later
         # Subtract the two values
-            Vpu[k] = busDict[busNames[k]].vpu
-            delta[k] = busDict[busNames[k]].delta
-        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
+            bus_name = busNames[k]
+            bus = busDict[bus_name]
 
-        return
+            Vpu[k] = busDict[bus_name].vpu
+            delta[k] = busDict[bus_name].delta
+            #Compute the real and reactive power injection from the method
+            injected_real_power = injection_results[bus_name]['P']
+            injected_reactive_power = injection_results[bus_name]['Q']
+
+            # Fetch the specified (expected) power for the bus
+            if bus.bus_type == 'Slack':
+                specified_real_power = 0  # Real power demand or generation
+                specified_reactive_power = 0  # Reactive power demand or generation
+            elif bus.bus_type == 'PV':
+                specified_real_power = bus.real_power
+                specified_reactive_power = 0
+            elif bus.bus_type == 'PQ':
+                specified_real_power = bus.real_power
+                specified_reactive_power = bus.reactive_power
+            else:
+                print('Incorrect bus type, setting vals to 0')
+                specified_real_power = 0
+                specified_reactive_power = 0
+
+        # Calculate mismatch (injection - specified power)
+            real_power_mismatch[k] = specified_real_power - injected_real_power
+            reactive_power_mismatch[k] = specified_reactive_power - injected_reactive_power
+
+        # Combine the real and reactive mismatches into one array (stacked)
+        power_mismatch = np.concatenate((real_power_mismatch, reactive_power_mismatch))
+
+        return power_mismatch
 
 
 if __name__ == '__main__':

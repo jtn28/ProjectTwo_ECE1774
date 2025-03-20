@@ -10,6 +10,9 @@ class Bus:
         # Milestone 5 attributes
         self.vpu = vpu
         self.delta = delta
+        # Milestone 6 attributes
+        self.real_power = 0
+        self.imaginary_power = 0
         if bus_type == 'Slack' or bus_type == 'PQ' or bus_type == 'PV':
             self.type = bus_type
         else:
