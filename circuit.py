@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
-from bus import Bus
+from Bus import Bus
 from conductor import Conductor
-from bundle import Bundle
-from geometry import Geometry
+from Bundle import Bundle
+from Geometry import Geometry
 from transformer_Class import Transformer
 from transmissionLine import TransmissionLine
 

@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from settings import Settings
-from bundle import Bundle
-from bus import Bus
-from geometry import Geometry
+from Settings import Settings
+from Bundle import Bundle
+from Bus import Bus
+from Geometry import Geometry
 from conductor import Conductor # Seems to be needed even though reference in Bundle
 
 class TransmissionLine:

@@ -1,5 +1,5 @@
-from bus import Bus  # Ensure bus.py is correctly set up
-from settings import Settings
+from Bus import Bus  # Ensure bus.py is correctly set up
+from Settings import Settings
 import pandas as pd
 import numpy as np
 
