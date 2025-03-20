@@ -1,13 +1,13 @@
 # need to create 7 node system here
 import pandas as pd
 import numpy as np
-from Circuit import Circuit
+from circuit import Circuit
 # Seem to need these, just circuit does not work
 from conductor import  Conductor
-from Bus import Bus
-from Bundle import  Bundle
-from Geometry import Geometry
-from Settings import Settings
+from bus import Bus
+from bundle import  Bundle
+from geometry import Geometry
+from settings import Settings
 
 pd.options.display.width = 0
 
@@ -45,6 +45,15 @@ seven_circuit.add_transformer('T1', seven_circuit.buses.get("Bus1"), seven_circu
                                  125, 8.5, 10)
 seven_circuit.add_transformer('T2', seven_circuit.buses.get("Bus6"), seven_circuit.buses.get("Bus7"),
                                  200, 10.5, 12)
+
+# Loads
+seven_circuit.add_load('load2', seven_circuit.buses.get("Bus2"), 0, 0)
+seven_circuit.add_load('load3', seven_circuit.buses.get("Bus3"), 110, 50)
+seven_circuit.add_load('load4', seven_circuit.buses.get("Bus4"), 100, 70)
+seven_circuit.add_load('load5', seven_circuit.buses.get("Bus5"), 100, 65)
+seven_circuit.add_load('load6', seven_circuit.buses.get("Bus6"), 0, 0)
+# Generators
+seven_circuit.add_generator('generator1', seven_circuit.buses.get("Bus7"), 1, 200)
 seven_circuit.calc_ybus()
 print(list(seven_circuit.buses.keys()))
 print(seven_circuit.transformers)
