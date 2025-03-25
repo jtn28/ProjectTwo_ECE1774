@@ -76,11 +76,47 @@ class Circuit:
         return y_bus
 
     def compute_power_injection(self, busDict, yBusFrame, voltageVector):
-        for bus in busDict:
-            pass
+        def calc_Px(self):
+            """Computes the real power injection (P) for all buses."""
+            Px = {bus: 0.0 for bus in self.circuit.bus_order}  # Initialize
+            power_tolerance = 1e-10  # Numerical threshold
 
+            for k, bus_k in enumerate(self.circuit.bus_order):
+                V_k = self.voltage[bus_k]
+                delta_k = self.delta[bus_k]
+                P_k = 0.0  # Real power injection
 
-        return
+                for j, bus_j in enumerate(self.circuit.bus_order):
+                    V_j = self.voltage[bus_j]
+                    delta_j = self.delta[bus_j]
+                    Y_kj = self.circuit.ybus[k, j]
+
+                    P_k += V_k * V_j * abs(Y_kj) * np.cos(delta_k - delta_j - np.angle(Y_kj))
+
+                Px[bus_k] = P_k if abs(P_k) > power_tolerance else 0.0  # Apply tolerance
+
+            return Px
+
+        def calc_Qx(self):
+            """Computes the reactive power injection (Q) for all buses."""
+            Qx = {bus: 0.0 for bus in self.circuit.bus_order}  # Initialize
+            power_tolerance = 1e-10  # Numerical threshold
+
+            for k, bus_k in enumerate(self.circuit.bus_order):
+                V_k = self.voltage[bus_k]
+                delta_k = self.delta[bus_k]
+                Q_k = 0.0  # Reactive power injection
+
+                for j, bus_j in enumerate(self.circuit.bus_order):
+                    V_j = self.voltage[bus_j]
+                    delta_j = self.delta[bus_j]
+                    Y_kj = self.circuit.ybus[k, j]
+
+                    Q_k += V_k * V_j * abs(Y_kj) * np.sin(delta_k - delta_j - np.angle(Y_kj))
+
+                Qx[bus_k] = Q_k if abs(Q_k) > power_tolerance else 0.0  # Apply tolerance
+
+            return Qx
 
     # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
     def compute_power_mismatch(self, busDict, yBusFrame, voltageVector):
@@ -88,7 +124,7 @@ class Circuit:
         delta = np.zeros(Bus.counter)
         busNames = list(busDict.keys())
         # Get the results of the injection
-        injection_results = Settings.compute_power_injection(busDict, yBusFrame, voltageVector)
+        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
 
         # Initialize mismatch arrays for real (P) and reactive (Q) power
         real_power_mismatch = np.zeros(Bus.counter)
