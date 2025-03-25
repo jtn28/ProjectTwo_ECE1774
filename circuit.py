@@ -68,55 +68,49 @@ class Circuit:
                 for col in prim.columns:
                     value = prim.loc[row, col]
                     y_bus.loc[row, col] += value
-
-
-
         # Currently here to make it easier to debug, remove print statement the final implementation
-        print(y_bus)
+        #print(y_bus)
         return y_bus
 
     def compute_power_injection(self, busDict, yBusFrame, voltageVector):
-        def calc_Px(self):
             """Computes the real power injection (P) for all buses."""
-            Px = {bus: 0.0 for bus in self.circuit.bus_order}  # Initialize
+            Px = {bus: 0.0 for bus in busDict}  # Initialize
             power_tolerance = 1e-10  # Numerical threshold
 
-            for k, bus_k in enumerate(self.circuit.bus_order):
-                V_k = self.voltage[bus_k]
-                delta_k = self.delta[bus_k]
+            for k, bus_k in enumerate(busDict):
+                V_k = busDict[bus_k].vpu
+                delta_k = busDict[bus_k].delta
                 P_k = 0.0  # Real power injection
 
-                for j, bus_j in enumerate(self.circuit.bus_order):
-                    V_j = self.voltage[bus_j]
-                    delta_j = self.delta[bus_j]
-                    Y_kj = self.circuit.ybus[k, j]
+                for j, bus_j in enumerate(busDict):
+                    V_j = busDict[bus_j].vpu
+                    delta_j = busDict[bus_j].delta
+                    Y_kj = yBusFrame.loc[bus_k,bus_j]
 
                     P_k += V_k * V_j * abs(Y_kj) * np.cos(delta_k - delta_j - np.angle(Y_kj))
 
                 Px[bus_k] = P_k if abs(P_k) > power_tolerance else 0.0  # Apply tolerance
 
-            return Px
-
-        def calc_Qx(self):
             """Computes the reactive power injection (Q) for all buses."""
-            Qx = {bus: 0.0 for bus in self.circuit.bus_order}  # Initialize
+            Qx = {bus: 0.0 for bus in busDict}  # Initialize
             power_tolerance = 1e-10  # Numerical threshold
 
-            for k, bus_k in enumerate(self.circuit.bus_order):
-                V_k = self.voltage[bus_k]
-                delta_k = self.delta[bus_k]
+            for k, bus_k in enumerate(busDict):
+                V_k = busDict[bus_k].vpu
+                delta_k = busDict[bus_k].delta
                 Q_k = 0.0  # Reactive power injection
 
-                for j, bus_j in enumerate(self.circuit.bus_order):
-                    V_j = self.voltage[bus_j]
-                    delta_j = self.delta[bus_j]
-                    Y_kj = self.circuit.ybus[k, j]
+                for j, bus_j in enumerate(busDict):
+                    V_j = busDict[bus_j].vpu
+                    delta_j = busDict[bus_j].delta
+                    Y_kj = yBusFrame.loc[bus_k, bus_j]
 
                     Q_k += V_k * V_j * abs(Y_kj) * np.sin(delta_k - delta_j - np.angle(Y_kj))
 
                 Qx[bus_k] = Q_k if abs(Q_k) > power_tolerance else 0.0  # Apply tolerance
 
-            return Qx
+
+            return [Px, Qx]
 
     # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
     def compute_power_mismatch(self, busDict, yBusFrame, voltageVector):
@@ -141,17 +135,17 @@ class Circuit:
             Vpu[k] = busDict[bus_name].vpu
             delta[k] = busDict[bus_name].delta
             #Compute the real and reactive power injection from the method
-            injected_real_power = injection_results[bus_name]['P']
-            injected_reactive_power = injection_results[bus_name]['Q']
+            injected_real_power = injection_results[0][bus_name]
+            injected_reactive_power = injection_results[1][bus_name]
 
             # Fetch the specified (expected) power for the bus
-            if bus.bus_type == 'Slack':
+            if bus.type == 'Slack':
                 specified_real_power = 0  # Real power demand or generation
                 specified_reactive_power = 0  # Reactive power demand or generation
-            elif bus.bus_type == 'PV':
+            elif bus.type == 'PV':
                 specified_real_power = bus.real_power
                 specified_reactive_power = 0
-            elif bus.bus_type == 'PQ':
+            elif bus.type == 'PQ':
                 specified_real_power = bus.real_power
                 specified_reactive_power = bus.reactive_power
             else:

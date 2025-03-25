@@ -54,6 +54,6 @@ seven_circuit.add_load('load5', seven_circuit.buses.get("Bus5"), 100, 65)
 seven_circuit.add_load('load6', seven_circuit.buses.get("Bus6"), 0, 0)
 # Generators
 seven_circuit.add_generator('generator1', seven_circuit.buses.get("Bus7"), 1, 200)
-seven_circuit.calc_ybus()
 print(list(seven_circuit.buses.keys()))
-print(seven_circuit.transformers)
+print((seven_circuit.compute_power_injection(seven_circuit.buses, seven_circuit.calc_ybus(),[])))
+print((seven_circuit.compute_power_mismatch(seven_circuit.buses, seven_circuit.calc_ybus(),[])))
