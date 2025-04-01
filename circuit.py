@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from settings import Settings
 from bus import Bus
 from conductor import Conductor
 from bundle import Bundle
@@ -162,6 +161,140 @@ class Circuit:
 
         return power_mismatch
 
+# Jacobian - Milestone 7 -JN
+class Jacobian:
+    def __init__(self, buses: dict, ybus, voltages):
+        self.buses = list(buses.values())
+        self.ybus = ybus
+        self.V = np.abs(voltages)
+        self.delta = np.angle(voltages)
+        self.bus_index = {bus.name: i for i, bus in enumerate(self.buses)}
+
+        self.pq_buses = [bus for bus in self.buses if bus.type == 'PQ']
+        self.pv_buses = [bus for bus in self.buses if bus.type == 'PV']
+        self.non_slack_buses = [bus for bus in self.buses if bus.type != 'Slack']
+
+    def calc_jacobian(self):
+        J1 = self.calc_J1()
+        J2 = self.calc_J2()
+        J3 = self.calc_J3()
+        J4 = self.calc_J4()
+
+        top = np.hstack((J1, J2))
+        bottom = np.hstack((J3, J4))
+        return np.vstack((top, bottom))
+
+    def calc_J1(self):
+        # ∂P/∂δ
+        n = len(self.non_slack_buses)
+        J1 = np.zeros((n, n))
+
+        for i, bus_i in enumerate(self.non_slack_buses):
+            ki = self.bus_index[bus_i.name]
+            for j, bus_j in enumerate(self.non_slack_buses):
+                kj = self.bus_index[bus_j.name]
+                if ki == kj:
+                    for m, bus_m in enumerate(self.buses):
+                        if bus_m.name != bus_i.name:
+                            km = self.bus_index[bus_m.name]
+                            Y_km = self.ybus.iloc[ki, km]
+                            G = Y_km.real
+                            B = Y_km.imag
+                            angle = self.delta[ki] - self.delta[km]
+                            J1[i, j] += self.V[ki] * self.V[km] * (G * np.sin(angle) - B * np.cos(angle))
+                    J1[i, j] *= -1
+                else:
+                    Y_kj = self.ybus.iloc[ki, kj]
+                    G = Y_kj.real
+                    B = Y_kj.imag
+                    angle = self.delta[ki] - self.delta[kj]
+                    J1[i, j] = self.V[ki] * self.V[kj] * (G * np.sin(angle) - B * np.cos(angle))
+        return J1
+
+    def calc_J2(self):
+        # ∂P/∂V
+        rows = len(self.non_slack_buses)
+        cols = len(self.pq_buses)
+        J2 = np.zeros((rows, cols))
+
+        for i, bus_i in enumerate(self.non_slack_buses):
+            ki = self.bus_index[bus_i.name]
+            for j, bus_j in enumerate(self.pq_buses):
+                kj = self.bus_index[bus_j.name]
+                Y_kj = self.ybus.iloc[ki, kj]
+                G = Y_kj.real
+                B = Y_kj.imag
+                angle = self.delta[ki] - self.delta[kj]
+
+                if ki == kj:
+                    sum_term = 0
+                    for m, bus_m in enumerate(self.buses):
+                        km = self.bus_index[bus_m.name]
+                        Y_km = self.ybus.iloc[ki, km]
+                        Gm = Y_km.real
+                        Bm = Y_km.imag
+                        angle_m = self.delta[ki] - self.delta[km]
+                        sum_term += self.V[km] * (Gm * np.cos(angle_m) + Bm * np.sin(angle_m))
+                    J2[i, j] = 2 * self.V[ki] * self.ybus.iloc[ki, ki].real + sum_term
+                else:
+                    J2[i, j] = self.V[ki] * (G * np.cos(angle) + B * np.sin(angle))
+        return J2
+
+    def calc_J3(self):
+        # ∂Q/∂δ
+        rows = len(self.pq_buses)
+        cols = len(self.non_slack_buses)
+        J3 = np.zeros((rows, cols))
+
+        for i, bus_i in enumerate(self.pq_buses):
+            ki = self.bus_index[bus_i.name]
+            for j, bus_j in enumerate(self.non_slack_buses):
+                kj = self.bus_index[bus_j.name]
+                if ki == kj:
+                    for m, bus_m in enumerate(self.buses):
+                        if bus_m.name != bus_i.name:
+                            km = self.bus_index[bus_m.name]
+                            Y_km = self.ybus.iloc[ki, km]
+                            G = Y_km.real
+                            B = Y_km.imag
+                            angle = self.delta[ki] - self.delta[km]
+                            J3[i, j] += self.V[ki] * self.V[km] * (G * np.cos(angle) + B * np.sin(angle))
+                    J3[i, j] *= -1
+                else:
+                    Y_kj = self.ybus.iloc[ki, kj]
+                    G = Y_kj.real
+                    B = Y_kj.imag
+                    angle = self.delta[ki] - self.delta[kj]
+                    J3[i, j] = -self.V[ki] * self.V[kj] * (G * np.cos(angle) + B * np.sin(angle))
+        return J3
+
+    def calc_J4(self):
+        # ∂Q/∂V
+        size = len(self.pq_buses)
+        J4 = np.zeros((size, size))
+
+        for i, bus_i in enumerate(self.pq_buses):
+            ki = self.bus_index[bus_i.name]
+            for j, bus_j in enumerate(self.pq_buses):
+                kj = self.bus_index[bus_j.name]
+                Y_kj = self.ybus.iloc[ki, kj]
+                G = Y_kj.real
+                B = Y_kj.imag
+                angle = self.delta[ki] - self.delta[kj]
+
+                if ki == kj:
+                    sum_term = 0
+                    for m, bus_m in enumerate(self.buses):
+                        km = self.bus_index[bus_m.name]
+                        Y_km = self.ybus.iloc[ki, km]
+                        Gm = Y_km.real
+                        Bm = Y_km.imag
+                        angle_m = self.delta[ki] - self.delta[km]
+                        sum_term += self.V[km] * (Gm * np.sin(angle_m) - Bm * np.cos(angle_m))
+                    J4[i, j] = -2 * self.V[ki] * self.ybus.iloc[ki, ki].imag - sum_term
+                else:
+                    J4[i, j] = -self.V[ki] * (G * np.sin(angle) - B * np.cos(angle))
+        return J4
 
 if __name__ == '__main__':
     test_circuit = Circuit('Test Circuit')
