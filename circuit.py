@@ -295,6 +295,25 @@ class Jacobian:
                 else:
                     J4[i, j] = -self.V[ki] * (G * np.sin(angle) - B * np.cos(angle))
         return J4
+    def get_jacobian_dataframe(self, round_decimals=5):
+        """
+        Returns the Jacobian matrix as a clean, labeled pandas DataFrame.
+
+        Parameters:
+        round_decimals (int): Number of decimal places to round for display.
+
+        Returns:
+        pd.DataFrame: Labeled and rounded Jacobian matrix.
+        """
+        J = self.calc_jacobian()
+
+        # Create labels: δ_BusName for angle entries, V_BusName for voltage magnitude entries
+        delta_labels = [f"δ_{bus.name}" for bus in self.non_slack_buses]
+        v_labels = [f"V_{bus.name}" for bus in self.pq_buses]
+        labels = delta_labels + v_labels
+
+        df = pd.DataFrame(J, index=labels, columns=labels)
+        return df.round(round_decimals)
 
 if __name__ == '__main__':
     test_circuit = Circuit('Test Circuit')

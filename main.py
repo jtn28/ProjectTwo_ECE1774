@@ -54,9 +54,34 @@ seven_circuit.add_load('load6', seven_circuit.buses["Bus6"], 0, 0)
 
 seven_circuit.add_generator('generator1', seven_circuit.buses["Bus6"], 1.0, 200)
 
+print("\n============================")
+print(" Per-Unit Transformer Data ")
+print("============================")
+for tf_key, tf in seven_circuit.transformers.items():
+    print(f"{tf.name}: Rpu = {tf.rpu:.5f}, Xpu = {tf.xpu:.5f}")
+
+print("\n==============================")
+print(" Per-Unit Transmission Line Data")
+print("==============================")
+for key, line in seven_circuit.transmission_lines.items():
+    zpu = line.calculate_zpu()
+    ypu = line.calculate_ypu()
+    r = zpu.real
+    x = zpu.imag
+    b = ypu.imag
+    print(f"{line.name}: R = {r:.5f} pu, X = {x:.5f} pu, B = {b:.5f} pu")
+
 # =============================
-# Jacobian Matrix Validation
+# Ybus Matrix Output
 # =============================
+print("\n===================")
+print(" Ybus Admittance Matrix (Rounded)")
+print("===================")
+
+ybus = seven_circuit.calc_ybus()  # <-- Add this line to define ybus
+ybus_df = ybus.round(5)
+print(ybus_df.to_string())
+
 print("\n==========================")
 print(" JACOBIAN VALIDATION TEST ")
 print("==========================")
@@ -70,13 +95,12 @@ voltages = np.array([
 # Step 2: Calculate Ybus
 ybus = seven_circuit.calc_ybus()
 
-# Step 3: Compute Jacobian matrix
+# Step 3: Compute & Display the Jacobian matrix
 jacobian = Jacobian(seven_circuit.buses, ybus, voltages)
-J = jacobian.calc_jacobian()
+jacobian_df = jacobian.get_jacobian_dataframe()
 
-# Step 4: Output
 print("\nJacobian Matrix Shape:")
-print(J.shape)
+print(jacobian_df.shape)
 
-print("\nJacobian Matrix (rounded):")
-print(np.round(J, 5))
+print("\nJacobian Matrix (Labeled & Rounded):")
+print(jacobian_df.to_string())
