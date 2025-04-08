@@ -4,12 +4,25 @@ class Bundle:
     # Creating the init, needs to have a reference to the conductor class to function, will push for now
     # and update to change the conductor references if needed.
     def __init__(self, name:str, num_conductors:int, spacing:float, conductor:Conductor):
+        """
+        Class for determining the dsc and dsl of a bundle of conductors for a transmission line
+        Parameters:
+            name(str): name of the bundle
+            num_conductors(int): number of conductors in bundle
+            spacing(float): spacing between conductors
+            conductor(Conductor): the conductor class to be used
+        """
+
         self.name = name
         self.num_conductors = num_conductors
         self.spacing = spacing
         self.conductor = conductor
 
     def calculate_dsc(self):
+        """
+        Returns:
+            value(float): the dsc of the bundle
+        """
         # Start by grabbing the GMR from the conductor class, then calculate
         # Assuming the diameter is given in feet, may need to adjust this later
         if self.num_conductors == 1:
@@ -27,6 +40,10 @@ class Bundle:
 
     def calculate_dsl(self):
         # Start by grabbing the GMR from the conductor class, then calculate
+        """
+        Returns:
+            value(float): the dsl of the bundle
+        """
         if self.num_conductors == 1:
             return self.conductor.GMR
         elif self.num_conductors == 2:

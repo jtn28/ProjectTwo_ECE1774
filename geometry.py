@@ -21,7 +21,11 @@ class Geometry:
         self.Deq = self.calc_deq()  # Fixed method call
 
     def calc_deq(self) -> float:
-        """Calculates the equivalent distance (Deq)."""
+        """
+        Calculates the equivalent distance (Deq).
+        Returns:
+            Deq(float): Equivalent distance of geometry.
+        """
         dab = math.sqrt((self.xb - self.xa) ** 2 + (self.yb - self.ya) ** 2)
         dbc = math.sqrt((self.xc - self.xb) ** 2 + (self.yc - self.yb) ** 2)
         dac = math.sqrt((self.xc - self.xa) ** 2 + (self.yc - self.ya) ** 2)

@@ -3,7 +3,16 @@ class Bus:
     # Starting at 0 since Python matrices and lists start at the 0 index
     counter = 0
     # Constructor for the class
-    def __init__(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'Slack'):
+    def __init__(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'PQ'):
+        """
+        Class for defining a bus and the values relevant to it.
+        Parameters:
+            name (str): name of the bus
+            baseKV (float): base voltage of the bus
+            vpu (float): Per unit bus voltage
+            delta (float): Angle of the bus
+            bus_type (str): Type of bus, used for injection and similar
+        """
         # Attributes
         self.name = name
         self.baseKV = baseKV

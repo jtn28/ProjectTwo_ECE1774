@@ -12,6 +12,17 @@ from load import Load
 
 class Circuit:
     def __init__(self, name:str):
+        """
+                Function for creating and manipulating circuit elements.
+
+                Parameters:
+                name (string): Defines name of circuit.
+                buses (dict): Dictionary for storing bus objects.
+                transformers (dict): Dictionary for storing transformer objects.
+                transmission_lines (dict): Dictionary for storing transmission lines.
+                generators (dict): Dictionary for storing generators.
+                loads (dict): Dictionary for storing loads.
+        """
         self.name = name
         self.buses = {}
         self.transformers = {}
@@ -20,31 +31,76 @@ class Circuit:
         self.loads = {}
 
 
-    def add_bus(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'Slack'):
+    def add_bus(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'PQ'):
+        """
+        Function for adding bus elements.
+        Parameters:
+            name (string): Defines name of bus.
+            baseKV (float): Defines base KV.
+            vpu (float): Defines vpu.
+            delta (float): Defines delta.
+            bus_type (str): Defines type of bus.
+        """
         bus = Bus(name, baseKV, vpu, delta, bus_type)
         self.buses[bus.name] = bus
         return
 
     def add_transformer(self, name: str, bus1: Bus, bus2: Bus, power_rating: float, impedance_percent: float,
                  x_over_r_ratio: float):
+        """
+        Function for adding transformer elements.
+        Parameters:
+            name (string): Defines name of transformer.
+            bus1 (Bus): Defines first bus object.
+            bus2 (Bus): Defines second bus object.
+            power_rating (float): Defines power rating.
+            impedance_percent (float): Defines impedance percent.
+            x_over_r_ratio (float): Defines x_over_r_ratio.
+        """
         transformer = Transformer(name, bus1, bus2, power_rating, impedance_percent, x_over_r_ratio)
         instance = (transformer.name, transformer.bus1, transformer.bus2)
         self.transformers[instance] = transformer
         return
 
     def add_transmission_line(self, name:str, bus1:Bus, bus2:Bus, bundle:Bundle, geometry:Geometry, length:float):
+        """
+        Function for adding transmission line elements.
+        Parameters:
+            name (string): Defines name of transmission line.
+            bus1 (Bus): Defines first bus object.
+            bus2 (Bus): Defines second bus object.
+            bundle (Bundle): Defines bundle.
+            geometry (Geometry): Defines geometry.
+            length (float): Defines length.
+        """
         transmission_line = TransmissionLine(name, bus1, bus2, bundle, geometry, length)
         instance = (transmission_line.name, transmission_line.bus1, transmission_line.bus2)
         self.transmission_lines[instance] = transmission_line
         return
 
     def add_generator(self, name:str, bus:Bus, voltage_setpoint:float, mw_setpoint:float):
+        """
+        Function for adding generator elements.
+        Parameters:
+            name (string): Defines name of generator.
+            bus (Bus): Defines bus object.
+            voltage_setpoint (float): Defines voltage set point.
+            mw_setpoint (float): Defines mw set point.
+        """
         generator = Generator(name, bus, voltage_setpoint, mw_setpoint)
         instance = (generator.name, generator.bus)
         self.generators[instance] = generator
         self.buses[bus.name].real_power += mw_setpoint
 
-    def add_load(self, name: str, bus, real_power: float, reactive_power: float):
+    def add_load(self, name: str, bus: Bus, real_power: float, reactive_power: float):
+        """
+        Function for adding load elements.
+        Parameters:
+            name (string): Defines name of load.
+            bus (Bus): Defines bus object.
+            real_power (float): Defines real power.
+            reactive_power (float): Defines reactive power.
+        """
         load = Load(name, bus, real_power, reactive_power)
         instance = (load.name, load.bus)
         self.loads[instance] = load
@@ -54,6 +110,11 @@ class Circuit:
     # For Creating the big Y Bus, use a for loop for each element, then grab the y primitive, then add it
     # to the y bus matrix, and keep going, use tags to know how to orient the whole thing
     def calc_ybus(self):
+        """
+        Calculates the y bus matrix of the circuit
+        Returns:
+            y_bus (pandas.core.frame.DataFrame): y bus matrix
+        """
         bus_names = list(self.buses.keys())
         y_bus = pd.DataFrame(0, index=bus_names, columns=bus_names, dtype=complex)
         for item in self.transformers:
@@ -72,8 +133,16 @@ class Circuit:
         #print(y_bus)
         return y_bus
 
-    def compute_power_injection(self, busDict, yBusFrame, voltageVector):
-            """Computes the real power injection (P) for all buses."""
+    def compute_power_injection(self, busDict, yBusFrame):
+            """
+            Computes the real power injection (P) for all buses.
+            Parameters:
+                busDict (dict): Dictionary for storing bus objects.
+                yBusFrame (pandas.core.frame.DataFrame): y bus matrix
+            Returns:
+                Px (pandas.core.frame.DataFrame): Real power injection (P) for all buses.
+                Qx (pandas.core.frame.DataFrame): Real power injection (Q) for all buses.
+            """
             Px = {bus: 0.0 for bus in busDict}  # Initialize
             power_tolerance = 1e-10  # Numerical threshold
 
@@ -113,12 +182,20 @@ class Circuit:
             return [Px, Qx]
 
     # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
-    def compute_power_mismatch(self, busDict, yBusFrame, voltageVector):
+    def compute_power_mismatch(self, busDict, yBusFrame):
+        """
+        Computes the power mismatch (PM) for all buses.
+        Parameters:
+            busDict (dict): Dictionary for storing bus objects.
+            yBusFrame (pandas.core.frame.DataFrame): y bus matrix
+        Returns:
+            power_mismatch (pandas.core.frame.DataFrame): Power mismatch (PM) for all buses, row 1 being real and row 2 being imaginary.
+        """
         Vpu = np.ones(Bus.counter)
         delta = np.zeros(Bus.counter)
         busNames = list(busDict.keys())
         # Get the results of the injection
-        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
+        injection_results = self.compute_power_injection(busDict, yBusFrame)
 
         # Initialize mismatch arrays for real (P) and reactive (Q) power
         real_power_mismatch = np.zeros(Bus.counter)
@@ -143,11 +220,11 @@ class Circuit:
                 specified_real_power = 0  # Real power demand or generation
                 specified_reactive_power = 0  # Reactive power demand or generation
             elif bus.type == 'PV':
-                specified_real_power = bus.real_power
+                specified_real_power = bus.real_power / Settings.Sbase
                 specified_reactive_power = 0
             elif bus.type == 'PQ':
-                specified_real_power = bus.real_power
-                specified_reactive_power = bus.reactive_power
+                specified_real_power = bus.real_power / Settings.Sbase
+                specified_reactive_power = bus.imaginary_power / Settings.Sbase
             else:
                 print('Incorrect bus type, setting vals to 0')
                 specified_real_power = 0
