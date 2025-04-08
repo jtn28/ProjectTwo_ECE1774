@@ -14,13 +14,13 @@ pd.options.display.width = 0
 # Creating the main circuit
 # Initialize the circuit structure
 seven_circuit = Circuit('Seven Bus System')
-seven_circuit.add_bus('Bus1', 125)
+seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
 seven_circuit.add_bus('Bus2', 230)
 seven_circuit.add_bus('Bus3', 230)
 seven_circuit.add_bus('Bus4', 230)
 seven_circuit.add_bus('Bus5', 230)
 seven_circuit.add_bus('Bus6', 230)
-seven_circuit.add_bus('Bus7', 18)
+seven_circuit.add_bus('Bus7', 18, bus_type='PV')
 # Initializing the transmission lines
 # Basic surround structures first
 partridge = Conductor("Partridge", 0.642 / 12, 0.0217, 0.385, 460)
@@ -54,6 +54,9 @@ seven_circuit.add_load('load5', seven_circuit.buses.get("Bus5"), 100, 65)
 seven_circuit.add_load('load6', seven_circuit.buses.get("Bus6"), 0, 0)
 # Generators
 seven_circuit.add_generator('generator1', seven_circuit.buses.get("Bus7"), 1, 200)
+print(seven_circuit.buses.get("Bus3").real_power)
 print(list(seven_circuit.buses.keys()))
-print((seven_circuit.compute_power_injection(seven_circuit.buses, seven_circuit.calc_ybus(),[])))
-print((seven_circuit.compute_power_mismatch(seven_circuit.buses, seven_circuit.calc_ybus(),[])))
+print((seven_circuit.compute_power_injection(seven_circuit.buses, seven_circuit.calc_ybus())))
+print(type((seven_circuit.compute_power_mismatch(seven_circuit.buses, seven_circuit.calc_ybus()))))
+print(seven_circuit.calc_ybus())
+print(type(seven_circuit.calc_ybus()))

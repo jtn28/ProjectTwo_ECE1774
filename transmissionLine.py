@@ -9,6 +9,16 @@ from conductor import Conductor # Seems to be needed even though reference in Bu
 class TransmissionLine:
 
     def __init__(self, name:str, bus1:Bus, bus2:Bus, bundle:Bundle, geometry:Geometry, length:float):
+        """
+        Creates and models the necessary values of a transmission line with the purpose of creating a primitive y bus matrix
+        Parameters:
+            name(str): name of the transmission line
+            bus1(Bus): bus object, used for determining Vbase
+            bus2(Bus): bus object
+            bundle(Bundle): bundle object
+            geometry(Geometry): geometry object
+            length(float): length of the transmission line
+        """
         self.name = name
         self.bus1 = bus1
         self.bus2 = bus2
@@ -24,6 +34,10 @@ class TransmissionLine:
 
     def calculate_impedance(self):
         # Using equation w*2*10^-7 * log(DEQ/DSL)
+        """
+        Returns:
+            float: impedance of the transmission line
+        """
         z_imag = 2*np.pi*self.f * 2e-7 * np.log(self.geometry.calc_deq() / self.bundle.calculate_dsl())
         z_imag_full = 1j * z_imag * self.length * 1609
         z_real = self.bundle.conductor.resistance * self.length / self.bundle.num_conductors
@@ -32,18 +46,26 @@ class TransmissionLine:
     def calculate_admittance(self):
         # Using equation w * 2pi * e0 / log(DEQ/DSC)
         # NEED TO CHECK, WAS GETTING DIFFERENCE FROM PAULO
+        """
+        Returns:
+            float: admittance of the transmission line
+        """
         b_admittance = 2*np.pi*self.f * 2 * np.pi * 8.854e-12 / np.log(self.geometry.calc_deq() / self.bundle.calculate_dsc())
         y_shunt = 1j * b_admittance * self.length * 1609
         return y_shunt
-
+    """
     #Placeholders for later
     def calculate_zpu(self):
         return self.series_impedance / (self.Vbase**2/self.Sbase)
 
     def calculate_ypu(self):
         return self.shunt_admittance / (self.Sbase/self.Vbase**2)
-
+    """
     def calculate_admittance_matrix(self):
+        """
+        Returns:
+            end_matrix(pd.dataframe): primitive admittance matrix
+        """
         Y11 = self.shunt_admittance / 2 + 1 / self.series_impedance
         Y12 = -1 / self.series_impedance
         Y21 = Y12
@@ -53,8 +75,12 @@ class TransmissionLine:
 
     # Changing name to ensure it is consistent with the same call in the transformer class
     def calc_y_primitive(self):
-        z_pu = self.calculate_zpu()
-        y_pu = self.calculate_ypu()
+        """
+        Returns:
+            end_matrix(pd.dataframe): y primitive matrix
+        """
+        z_pu = self.series_impedance / (self.Vbase**2/self.Sbase)
+        y_pu = self.shunt_admittance / (self.Sbase/self.Vbase**2)
 
         Y11 = y_pu / 2 + 1 / z_pu
         Y12 = -1 / z_pu
