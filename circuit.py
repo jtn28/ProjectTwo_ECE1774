@@ -48,7 +48,7 @@ class Circuit:
         instance = (load.name, load.bus)
         self.loads[instance] = load
         self.buses[bus.name].real_power += real_power
-        self.buses[bus.name].imaginary_power += reactive_power
+        self.buses[bus.name].reactive_power += reactive_power
 
     # For Creating the big Y Bus, use a for loop for each element, then grab the y primitive, then add it
     # to the y bus matrix, and keep going, use tags to know how to orient the whole thing
@@ -71,7 +71,7 @@ class Circuit:
         #print(y_bus)
         return y_bus
 
-    def compute_power_injection(self, busDict, yBusFrame, voltageVector):
+        def compute_power_injection(self, busDict, yBusFrame, voltageVector):
             """Computes the real power injection (P) for all buses."""
             Px = {bus: 0.0 for bus in busDict}  # Initialize
             power_tolerance = 1e-10  # Numerical threshold
@@ -84,7 +84,7 @@ class Circuit:
                 for j, bus_j in enumerate(busDict):
                     V_j = busDict[bus_j].vpu
                     delta_j = busDict[bus_j].delta
-                    Y_kj = yBusFrame.loc[bus_k,bus_j]
+                    Y_kj = yBusFrame.loc[bus_k, bus_j]
 
                     P_k += V_k * V_j * abs(Y_kj) * np.cos(delta_k - delta_j - np.angle(Y_kj))
 
@@ -108,11 +108,75 @@ class Circuit:
 
                 Qx[bus_k] = Q_k if abs(Q_k) > power_tolerance else 0.0  # Apply tolerance
 
-
             return [Px, Qx]
 
     # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
     def compute_power_mismatch(self, busDict, yBusFrame, voltageVector):
+        Vpu = np.ones(Bus.counter)
+        delta = np.zeros(Bus.counter)
+        busNames = list(busDict.keys())
+        # Get the results of the injection
+        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
+
+        # Initialize mismatch arrays for real (P) and reactive (Q) power
+        real_power_mismatch = np.zeros(Bus.counter)
+        reactive_power_mismatch = np.zeros(Bus.counter)
+        for k in range(len(busNames)):
+            # 1. Loop through to get voltages and angles
+            # 2. Separate Call compute_power_injection (Will take voltages and angles)
+            # 3. loop through generators and loads to find given power
+            # Need to add those to main, do later
+            # Subtract the two values
+            bus_name = busNames[k]
+            bus = busDict[bus_name]
+
+            Vpu[k] = busDict[bus_name].vpu
+            delta[k] = busDict[bus_name].delta
+            # Compute the real and reactive power injection from the method
+            injected_real_power = injection_results[0][bus_name]
+            injected_reactive_power = injection_results[1][bus_name]
+
+            # Fetch the specified (expected) power for the bus
+            if bus.type == 'Slack':
+                specified_real_power = 0  # Real power demand or generation
+                specified_reactive_power = 0  # Reactive power demand or generation
+            elif bus.type == 'PV':
+                specified_real_power = bus.real_power
+                specified_reactive_power = 0
+            elif bus.type == 'PQ':
+                specified_real_power = bus.real_power
+                specified_reactive_power = bus.reactive_power
+            else:
+                print('Incorrect bus type, setting vals to 0')
+                specified_real_power = 0
+                specified_reactive_power = 0
+
+            # Calculate mismatch (injection - specified power)
+            real_power_mismatch[k] = specified_real_power - injected_real_power
+            reactive_power_mismatch[k] = specified_reactive_power - injected_reactive_power
+
+        # Combine the real and reactive mismatches into one array (stacked)
+        power_mismatch = np.concatenate((real_power_mismatch, reactive_power_mismatch))
+
+        return power_mismatch
+
+    def compute_power_injection_temp(self, busDict, yBusFrame, voltageVector):
+        """ Computes real (P) and reactive (Q) power injections using V * conj(I) """
+        V = voltageVector
+        I = yBusFrame.values @ V  # I = Ybus * V
+        S = V * np.conj(I)  # complex power injection at each bus
+
+        Px = dict()
+        Qx = dict()
+
+        for idx, bus_name in enumerate(busDict.keys()):
+            Px[bus_name] = S[idx].real
+            Qx[bus_name] = -S[idx].imag  # Note: Q = -Im(V * conj(I))
+
+        return [Px, Qx]
+
+    # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
+    def compute_power_mismatch_temp(self, busDict, yBusFrame, voltageVector):
         Vpu = np.ones(Bus.counter)
         delta = np.zeros(Bus.counter)
         busNames = list(busDict.keys())
@@ -212,7 +276,7 @@ class Jacobian:
         return J1
 
     def calc_J2(self):
-        # ∂P/∂V
+        # ∂P/∂V for non-slack (rows) vs PQ (columns)
         rows = len(self.non_slack_buses)
         cols = len(self.pq_buses)
         J2 = np.zeros((rows, cols))
@@ -235,13 +299,13 @@ class Jacobian:
                         Bm = Y_km.imag
                         angle_m = self.delta[ki] - self.delta[km]
                         sum_term += self.V[km] * (Gm * np.cos(angle_m) + Bm * np.sin(angle_m))
-                    J2[i, j] = 2 * self.V[ki] * self.ybus.iloc[ki, ki].real + sum_term
+                    J2[i, j] = -sum_term + self.V[ki] * Y_kj.real
                 else:
                     J2[i, j] = self.V[ki] * (G * np.cos(angle) + B * np.sin(angle))
         return J2
 
     def calc_J3(self):
-        # ∂Q/∂δ
+        # ∂Q/∂δ for PQ buses only
         rows = len(self.pq_buses)
         cols = len(self.non_slack_buses)
         J3 = np.zeros((rows, cols))
@@ -250,26 +314,31 @@ class Jacobian:
             ki = self.bus_index[bus_i.name]
             for j, bus_j in enumerate(self.non_slack_buses):
                 kj = self.bus_index[bus_j.name]
+                angle = self.delta[ki] - self.delta[kj]
+
                 if ki == kj:
+                    # Diagonal element
+                    sum_term = 0
                     for m, bus_m in enumerate(self.buses):
-                        if bus_m.name != bus_i.name:
-                            km = self.bus_index[bus_m.name]
-                            Y_km = self.ybus.iloc[ki, km]
-                            G = Y_km.real
-                            B = Y_km.imag
-                            angle = self.delta[ki] - self.delta[km]
-                            J3[i, j] += self.V[ki] * self.V[km] * (G * np.cos(angle) + B * np.sin(angle))
-                    J3[i, j] *= -1
+                        if m == ki:
+                            continue
+                        Y_km = self.ybus.iloc[ki, m]
+                        G = Y_km.real
+                        B = Y_km.imag
+                        angle_m = self.delta[ki] - self.delta[m]
+                        sum_term += self.V[m] * (G * np.cos(angle_m) + B * np.sin(angle_m))
+                    J3[i, j] = self.V[ki] * sum_term  # POSITIVE — NOT NEGATIVE
                 else:
+                    # Off-diagonal
                     Y_kj = self.ybus.iloc[ki, kj]
                     G = Y_kj.real
                     B = Y_kj.imag
-                    angle = self.delta[ki] - self.delta[kj]
                     J3[i, j] = -self.V[ki] * self.V[kj] * (G * np.cos(angle) + B * np.sin(angle))
+
         return J3
 
     def calc_J4(self):
-        # ∂Q/∂V
+        # ∂Q/∂V for PQ (rows) vs PQ (columns)
         size = len(self.pq_buses)
         J4 = np.zeros((size, size))
 
@@ -277,24 +346,29 @@ class Jacobian:
             ki = self.bus_index[bus_i.name]
             for j, bus_j in enumerate(self.pq_buses):
                 kj = self.bus_index[bus_j.name]
+                angle = self.delta[ki] - self.delta[kj]
                 Y_kj = self.ybus.iloc[ki, kj]
                 G = Y_kj.real
                 B = Y_kj.imag
-                angle = self.delta[ki] - self.delta[kj]
 
                 if ki == kj:
                     sum_term = 0
-                    for m, bus_m in enumerate(self.buses):
+                    for m, bus_m in enumerate(self.buses):  # all buses
                         km = self.bus_index[bus_m.name]
+                        if km != ki:
+                            continue
                         Y_km = self.ybus.iloc[ki, km]
                         Gm = Y_km.real
                         Bm = Y_km.imag
                         angle_m = self.delta[ki] - self.delta[km]
                         sum_term += self.V[km] * (Gm * np.sin(angle_m) - Bm * np.cos(angle_m))
-                    J4[i, j] = -2 * self.V[ki] * self.ybus.iloc[ki, ki].imag - sum_term
+                    Bii = self.ybus.iloc[ki, ki].imag
+                    J4[i, j] = -2 * self.V[ki] * Bii - sum_term  # FULL correct formula
                 else:
-                    J4[i, j] = -self.V[ki] * (G * np.sin(angle) - B * np.cos(angle))
+                    J4[i, j] = self.V[ki] * (G * np.sin(angle) - B * np.cos(angle))
+
         return J4
+
     def get_jacobian_dataframe(self, round_decimals=5):
         """
         Returns the Jacobian matrix as a clean, labeled pandas DataFrame.

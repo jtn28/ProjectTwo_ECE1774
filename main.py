@@ -5,7 +5,7 @@ from conductor import Conductor
 from bus import Bus
 from bundle import Bundle
 from geometry import Geometry
-from settings import Settings
+from solution import Solution
 
 pd.options.display.width = 0
 
@@ -14,46 +14,48 @@ pd.options.display.width = 0
 # =============================
 seven_circuit = Circuit('Seven Bus System')
 
-# Buses with explicit types
+# Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
 seven_circuit.add_bus('Bus2', 230, bus_type='PQ')
 seven_circuit.add_bus('Bus3', 230, bus_type='PQ')
 seven_circuit.add_bus('Bus4', 230, bus_type='PQ')
 seven_circuit.add_bus('Bus5', 230, bus_type='PQ')
-seven_circuit.add_bus('Bus6', 230, bus_type='PV')  # Has a generator
-seven_circuit.add_bus('Bus7', 18,  bus_type='PQ')
+seven_circuit.add_bus('Bus6', 230, bus_type='PQ')  # Was PV, should be PQ
+seven_circuit.add_bus('Bus7', 18,  vpu=1.0, bus_type='PV')  # Bus7 is the generator bus
 
 # =============================
-# Transmission Line Setup
+# Transmission Lines
 # =============================
 partridge = Conductor("Partridge", 0.642 / 12, 0.0217, 0.385, 460)
 seven_bundle = Bundle('test_bundle', 2, 1.5, partridge)
 seven_geometry = Geometry("test_bundle", 0, 0, 18.5, 0, 37, 0)
 
-seven_circuit.add_transmission_line("tLine1", seven_circuit.buses["Bus2"], seven_circuit.buses["Bus4"], seven_bundle, seven_geometry, 10)
-seven_circuit.add_transmission_line("tLine2", seven_circuit.buses["Bus2"], seven_circuit.buses["Bus3"], seven_bundle, seven_geometry, 25)
-seven_circuit.add_transmission_line("tLine3", seven_circuit.buses["Bus3"], seven_circuit.buses["Bus5"], seven_bundle, seven_geometry, 20)
-seven_circuit.add_transmission_line("tLine4", seven_circuit.buses["Bus4"], seven_circuit.buses["Bus6"], seven_bundle, seven_geometry, 20)
-seven_circuit.add_transmission_line("tLine5", seven_circuit.buses["Bus5"], seven_circuit.buses["Bus6"], seven_bundle, seven_geometry, 10)
-seven_circuit.add_transmission_line("tLine6", seven_circuit.buses["Bus4"], seven_circuit.buses["Bus5"], seven_bundle, seven_geometry, 35)
+seven_circuit.add_transmission_line("L1", seven_circuit.buses["Bus2"], seven_circuit.buses["Bus4"], seven_bundle, seven_geometry, 10)
+seven_circuit.add_transmission_line("L2", seven_circuit.buses["Bus2"], seven_circuit.buses["Bus3"], seven_bundle, seven_geometry, 25)
+seven_circuit.add_transmission_line("L3", seven_circuit.buses["Bus3"], seven_circuit.buses["Bus5"], seven_bundle, seven_geometry, 20)
+seven_circuit.add_transmission_line("L4", seven_circuit.buses["Bus4"], seven_circuit.buses["Bus6"], seven_bundle, seven_geometry, 20)
+seven_circuit.add_transmission_line("L5", seven_circuit.buses["Bus5"], seven_circuit.buses["Bus6"], seven_bundle, seven_geometry, 10)
+seven_circuit.add_transmission_line("L6", seven_circuit.buses["Bus4"], seven_circuit.buses["Bus5"], seven_bundle, seven_geometry, 35)
 
 # =============================
 # Transformers
 # =============================
 seven_circuit.add_transformer('T1', seven_circuit.buses["Bus1"], seven_circuit.buses["Bus2"], 125, 8.5, 10)
-seven_circuit.add_transformer('T2', seven_circuit.buses["Bus6"], seven_circuit.buses["Bus7"], 200, 10.5, 12)
+seven_circuit.add_transformer('T2', seven_circuit.buses["Bus7"], seven_circuit.buses["Bus6"], 200, 10.5, 12)
 
 # =============================
 # Loads and Generators
 # =============================
-seven_circuit.add_load('load2', seven_circuit.buses["Bus2"], 0, 0)
 seven_circuit.add_load('load3', seven_circuit.buses["Bus3"], 110, 50)
 seven_circuit.add_load('load4', seven_circuit.buses["Bus4"], 100, 70)
 seven_circuit.add_load('load5', seven_circuit.buses["Bus5"], 100, 65)
-seven_circuit.add_load('load6', seven_circuit.buses["Bus6"], 0, 0)
 
-seven_circuit.add_generator('generator1', seven_circuit.buses["Bus6"], 1.0, 200)
+# Bus 7 has generator output (PV type: 200 MW, V = 1.0 pu)
+seven_circuit.add_generator('generator2', seven_circuit.buses["Bus7"], voltage_setpoint=1.0, mw_setpoint=200)
 
+# =============================
+# Print Per-Unit Info
+# =============================
 print("\n============================")
 print(" Per-Unit Transformer Data ")
 print("============================")
@@ -77,30 +79,38 @@ for key, line in seven_circuit.transmission_lines.items():
 print("\n===================")
 print(" Ybus Admittance Matrix (Rounded)")
 print("===================")
+ybus = seven_circuit.calc_ybus()
+print(ybus.round(5).to_string())
 
-ybus = seven_circuit.calc_ybus()  # <-- Add this line to define ybus
-ybus_df = ybus.round(5)
-print(ybus_df.to_string())
-
+# =============================
+# JACOBIAN VALIDATION TEST
+# =============================
 print("\n==========================")
 print(" JACOBIAN VALIDATION TEST ")
 print("==========================")
 
-# Step 1: Flat-start voltage vector (V = 1∠0°)
 voltages = np.array([
     bus.vpu * np.exp(1j * bus.delta)
     for bus in seven_circuit.buses.values()
 ])
-
-# Step 2: Calculate Ybus
-ybus = seven_circuit.calc_ybus()
-
-# Step 3: Compute & Display the Jacobian matrix
 jacobian = Jacobian(seven_circuit.buses, ybus, voltages)
 jacobian_df = jacobian.get_jacobian_dataframe()
-
-print("\nJacobian Matrix Shape:")
-print(jacobian_df.shape)
-
-print("\nJacobian Matrix (Labeled & Rounded):")
+print("\nJacobian Matrix Shape:", jacobian_df.shape)
 print(jacobian_df.to_string())
+
+# =============================
+# Newton-Raphson Power Flow Test
+# =============================
+print("\n==============================")
+print(" Newton-Raphson Power Flow Test")
+print("==============================")
+
+solver = Solution(ybus, voltages, seven_circuit.buses)
+voltages_solution = solver.newton_raphson(iter_max=20, tol=1e-6)
+
+# Step 4: Final Result
+print("\nFinal Voltage Magnitudes and Angles:")
+for name, v in zip(seven_circuit.buses.keys(), voltages_solution):
+    mag = np.abs(v)
+    angle = np.angle(v, deg=True)
+    print(f"{name}: |V| = {mag:.4f} pu, ∠ = {angle:.2f}°")

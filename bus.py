@@ -3,22 +3,23 @@ class Bus:
     # Starting at 0 since Python matrices and lists start at the 0 index
     counter = 0
     # Constructor for the class
-    def __init__(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'Slack'):
-        # Attributes
+    def __init__(self, name: str, baseKV: float, vpu: float = 1, delta: float = 0, bus_type: str = 'Slack'):
         self.name = name
         self.baseKV = baseKV
-        # Milestone 5 attributes
         self.vpu = vpu
         self.delta = delta
-        # Milestone 6 attributes
-        self.real_power = 0
-        self.imaginary_power = 0
+
+        # These two are critical for power mismatch and injection
+        self.real_power = 0.0
+        self.reactive_power = 0.0  # <-- Renamed from imaginary_power
+
         if bus_type == 'Slack' or bus_type == 'PQ' or bus_type == 'PV':
             self.type = bus_type
         else:
-            print(f"Invalid bus type in Bus {Bus.counter}, bus_type input variable was {bus_type}, setting bus_type to PQ")
+            print(
+                f"Invalid bus type in Bus {Bus.counter}, bus_type input variable was {bus_type}, setting bus_type to PQ")
             self.type = 'PQ'
-        # Defining and incrementing the bus index
+
         self.index = Bus.counter
         Bus.counter += 1
 
