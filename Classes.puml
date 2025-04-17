@@ -1,0 +1,150 @@
+@startuml
+
+class Bundle {
++name: str
++num_conductors: int
++spacing: float
++conductor: Conductor
++calculate_dsc(self): float
++calculate_dsl(self): float
+}
+
+class Bus {
++name: str
++baseKV: float
++vpu: float
++delta: float
++bus_type: str
+}
+
+class Circuit {
++name: str
++buses: dict
++transformers: dict
++transmission_lines: dict
++generators: dict
++loads: dict
++add_bus(self, name: str, baseKV: float, vpu: float=1,
+ delta:float=0, bus_type: str='PQ'): void
++add_transformer(self, name: str, bus1: Bus, bus2: Bus, power_rating: float,
+ impedance_percent: float, x_over_r_ratio:float): void
++add_transmission_line(self, name: str, bus1: Bus, bus2: Bus, bundle: Bundle,
+ geometry: Geometry, length: float): void
++add_generator(self, name: str, bus: Bus,
+ voltage_setpoint: float, mw_setpoint: float): void
++add_load(self, name: str, bus: Bus,
+ real_power: float, reactive_power: float): void
++calc_ybus(self): pandas.core.frame.DataFrame
++compute_power_injection(self, busDict: dict, yBusFrame:pandas.core.frame.DataFrame
+ ): [Px: pandas.core.frame.Dataframe, Qx: pandas.core.frame.Dataframe]
++compute_power_mismatch(self, busDict: dict, yBusFrame:pandas.core.frame.DataFrame
+ ): power_mismatch: pandas.core.frame.DataFrame
+}
+
+class Jacobian {
++buses: dict
++ybus: pandas.core.frame.DataFrame
++voltages: pandas.core.frame.DataFrame
++calc_jacobian(self): numpy.ndarray
++calc_J1(self): numpy.ndarray
++calc_J2(self): numpy.ndarray
++calc_J3(self): numpy.ndarray
++calc_J4(self): numpy.ndarray
++get_jacobian_dataframe(self, round_decimals: int=5): pandas.core.frame.DataFrame
+
+}
+
+class Solution {
++ybus: pandas.core.frame.DataFrame
++voltages: numpy.ndarray
++buses: dict
++newton_raphson(self, iter_max: int=5, tol: float=1e-6): numpy.ndarray
+}
+
+class Conductor {
++name: str
++diameter: float
++GMR: float
++resistance: float
++ampacity: float
+}
+
+class Load {
++name: str
++bus: Bus
++real_power: float
++reactive_power: float
+}
+
+class Geometry {
++name: str
++xa: float
++ya: float
++xb: float
++yb: float
++xc: float
++yc: float
++calc_deq(self): float
+}
+
+class Settings {
++frequency: float
++base_power: float
++sbase: float
+}
+
+class Transformer {
++name: str
++bus1: Bus
++bus2: Bus
++power_rating: float
++impedance_percent: float
++x_over_r_ratio: float
++base_power: float
++calc_impedance(self): (float, float)
++calc_admittance(self): float
++calc_y_primitive(self): pandas.core.frame.DataFrame
+}
+
+class TransmissionLine {
++name: str
++bus1: Bus
++bus2: Bus
++bundle: Bundle
++geometry: Geometry
++length: float
++calculate_impedance(self): float
++calculate_admittance(self): float
++calculate_admittance_matrix: pandas.core.frame.DataFrame
++calc_y_primitive: pandas.core.frame.DataFrame
+}
+
+class Generator {
++name: str
++bus: Bus
++voltage_setpoint: float
++mw_setpoint: float
+}
+
+Bus -> TransmissionLine
+Bundle -> TransmissionLine
+Geometry -> TransmissionLine
+Settings -> TransmissionLine
+Settings -> Transformer
+Bus -> Transformer
+Conductor -> Bundle
+Bus -> Load
+Bus -> Generator
+Settings -> Circuit
+Bus -> Circuit
+Conductor -> Circuit
+Bundle -> Circuit
+Geometry -> Circuit
+Transformer -> Circuit
+TransmissionLine -> Circuit
+Generator -> Circuit
+Load -> Circuit
+Jacobian -> Solution
+Circuit -> Jacobian
+Circuit -> Solution
+@enduml
