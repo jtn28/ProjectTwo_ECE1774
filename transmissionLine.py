@@ -63,6 +63,34 @@ class TransmissionLine:
         end_matrix = [[Y11, Y12], [Y21, Y22]]
         return pd.DataFrame(end_matrix, index=[self.bus1.name, self.bus2.name], columns=[self.bus1.name, self.bus2.name])
 
+    def calc_y_primitive_sequence(self, sequence: str = "pos"):
+        """
+        Calculates sequence-specific primitive admittance matrix (Y-primitive).
+        """
+        sequence = sequence.lower()
+
+        match sequence:
+            case "pos" | "neg":
+                Z = self.calculate_zpu()
+                Y_shunt = self.calculate_ypu()
+            case "zero":
+                Z = 2.5 * self.calculate_zpu()
+                Y_shunt = self.calculate_ypu()
+            case _:
+                raise ValueError(f"Unknown sequence type: {sequence}")
+
+        Z_pu = Z / (self.Vbase ** 2 / self.Sbase)
+        Y_pu = Y_shunt / (self.Sbase / self.Vbase ** 2)
+
+        Y11 = Y_pu / 2 + 1 / Z_pu
+        Y12 = -1 / Z_pu
+        Y21 = Y12
+        Y22 = Y11
+
+        return pd.DataFrame([[Y11, Y12], [Y21, Y22]],
+                            index=[self.bus1.name, self.bus2.name],
+                            columns=[self.bus1.name, self.bus2.name])
+
     def __repr__(self):
         return f"TransmissionLine(name={self.name}, Bus1={self.bus1}, Bus2={self.bus2})"
 

@@ -76,6 +76,30 @@ class Circuit:
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         return y_bus
+    def calc_ybus_sequence(self, sequence: str = "pos"):
+        bus_names = list(self.buses.keys())
+        y_bus = pd.DataFrame(0, index=bus_names, columns=bus_names, dtype=complex)
+        for item in self.transformers:
+            prim = self.transformers[item].calc_y_primitive_sequence(sequence)
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        for item in self.transmission_lines:
+            prim = self.transmission_lines[item].calc_y_primitive_sequence(sequence)
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        for item in self.generators:
+            prim = self.generators[item].calc_y_primitive_sequence(sequence)
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        # Currently here to make it easier to debug, remove print statement the final implementation
+        #print(y_bus)
+        return y_bus
     def compute_power_injection(self, voltageVector):
         V = voltageVector
         I = self.calc_ybus().values @ V
