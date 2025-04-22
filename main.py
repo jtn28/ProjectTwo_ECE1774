@@ -12,7 +12,7 @@ pd.options.display.width = 0
 # =============================
 # Initialize the 7-Bus Circuit
 # =============================
-seven_circuit = Circuit('Seven Bus System')
+seven_circuit = Circuit('Seven Bus System', base_mva=100.0)
 
 # Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
@@ -26,6 +26,7 @@ seven_circuit.add_bus('Bus7', 18,  vpu=1.0, bus_type='PV')  # Bus7 is the genera
 # =============================
 # Transmission Lines
 # =============================
+
 partridge = Conductor("Partridge", 0.642 / 12, 0.0217, 0.385, 460)
 seven_bundle = Bundle('test_bundle', 2, 1.5, partridge)
 seven_geometry = Geometry("test_bundle", 0, 0, 18.5, 0, 37, 0)
@@ -105,8 +106,8 @@ print("\n==============================")
 print(" Newton-Raphson Power Flow Test")
 print("==============================")
 
-solver = Solution(ybus, voltages, seven_circuit.buses)
-voltages_solution = solver.newton_raphson(iter_max=20, tol=1e-6)
+solver = Solution(seven_circuit)
+voltages_solution = solver.newton_raphson(max_iter=10, tol=1e-4)
 
 # Step 4: Final Result
 print("\nFinal Voltage Magnitudes and Angles:")

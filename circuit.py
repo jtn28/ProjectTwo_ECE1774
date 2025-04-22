@@ -10,8 +10,9 @@ from generator import Generator
 from load import Load
 
 class Circuit:
-    def __init__(self, name:str):
+    def __init__(self, name:str, base_mva: float = 100):
         self.name = name
+        self.base_mva = base_mva
         self.buses = {}
         self.transformers = {}
         self.transmission_lines = {}
@@ -37,18 +38,23 @@ class Circuit:
         self.transmission_lines[instance] = transmission_line
         return
 
-    def add_generator(self, name:str, bus:Bus, voltage_setpoint:float, mw_setpoint:float):
-        generator = Generator(name, bus, voltage_setpoint, mw_setpoint)
-        instance = (generator.name, generator.bus)
-        self.generators[instance] = generator
-        self.buses[bus.name].real_power += mw_setpoint
 
-    def add_load(self, name: str, bus, real_power: float, reactive_power: float):
-        load = Load(name, bus, real_power, reactive_power)
-        instance = (load.name, load.bus)
-        self.loads[instance] = load
-        self.buses[bus.name].real_power += real_power
-        self.buses[bus.name].reactive_power += reactive_power
+    def add_generator(self, name, bus, voltage_setpoint, mw_setpoint):
+        real_pu = mw_setpoint / self.base_mva
+        generator = Generator(name, bus, voltage_setpoint, real_pu)
+        self.generators[name] = generator
+        bus.real_power += real_pu
+
+    # subtract because gen is injection
+
+    def add_load(self, name, bus, mw, mvar):
+        # Convert to per unit using base_mva
+        real_pu = mw / self.base_mva
+        reactive_pu = mvar / self.base_mva
+        load = Load(name, bus, real_pu, reactive_pu)
+        self.loads[name] = load
+        bus.real_power += real_pu
+        bus.reactive_power += reactive_pu
 
     # For Creating the big Y Bus, use a for loop for each element, then grab the y primitive, then add it
     # to the y bus matrix, and keep going, use tags to know how to orient the whole thing
@@ -70,160 +76,44 @@ class Circuit:
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         return y_bus
-
-        def compute_power_injection(self, busDict, yBusFrame, voltageVector):
-            """Computes the real power injection (P) for all buses."""
-            Px = {bus: 0.0 for bus in busDict}  # Initialize
-            power_tolerance = 1e-10  # Numerical threshold
-
-            for k, bus_k in enumerate(busDict):
-                V_k = busDict[bus_k].vpu
-                delta_k = busDict[bus_k].delta
-                P_k = 0.0  # Real power injection
-
-                for j, bus_j in enumerate(busDict):
-                    V_j = busDict[bus_j].vpu
-                    delta_j = busDict[bus_j].delta
-                    Y_kj = yBusFrame.loc[bus_k, bus_j]
-
-                    P_k += V_k * V_j * abs(Y_kj) * np.cos(delta_k - delta_j - np.angle(Y_kj))
-
-                Px[bus_k] = P_k if abs(P_k) > power_tolerance else 0.0  # Apply tolerance
-
-            """Computes the reactive power injection (Q) for all buses."""
-            Qx = {bus: 0.0 for bus in busDict}  # Initialize
-            power_tolerance = 1e-10  # Numerical threshold
-
-            for k, bus_k in enumerate(busDict):
-                V_k = busDict[bus_k].vpu
-                delta_k = busDict[bus_k].delta
-                Q_k = 0.0  # Reactive power injection
-
-                for j, bus_j in enumerate(busDict):
-                    V_j = busDict[bus_j].vpu
-                    delta_j = busDict[bus_j].delta
-                    Y_kj = yBusFrame.loc[bus_k, bus_j]
-
-                    Q_k += V_k * V_j * abs(Y_kj) * np.sin(delta_k - delta_j - np.angle(Y_kj))
-
-                Qx[bus_k] = Q_k if abs(Q_k) > power_tolerance else 0.0  # Apply tolerance
-
-            return [Px, Qx]
-
-    # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
-    def compute_power_mismatch(self, busDict, yBusFrame, voltageVector):
-        Vpu = np.ones(Bus.counter)
-        delta = np.zeros(Bus.counter)
-        busNames = list(busDict.keys())
-        # Get the results of the injection
-        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
-
-        # Initialize mismatch arrays for real (P) and reactive (Q) power
-        real_power_mismatch = np.zeros(Bus.counter)
-        reactive_power_mismatch = np.zeros(Bus.counter)
-        for k in range(len(busNames)):
-            # 1. Loop through to get voltages and angles
-            # 2. Separate Call compute_power_injection (Will take voltages and angles)
-            # 3. loop through generators and loads to find given power
-            # Need to add those to main, do later
-            # Subtract the two values
-            bus_name = busNames[k]
-            bus = busDict[bus_name]
-
-            Vpu[k] = busDict[bus_name].vpu
-            delta[k] = busDict[bus_name].delta
-            # Compute the real and reactive power injection from the method
-            injected_real_power = injection_results[0][bus_name]
-            injected_reactive_power = injection_results[1][bus_name]
-
-            # Fetch the specified (expected) power for the bus
-            if bus.type == 'Slack':
-                specified_real_power = 0  # Real power demand or generation
-                specified_reactive_power = 0  # Reactive power demand or generation
-            elif bus.type == 'PV':
-                specified_real_power = bus.real_power
-                specified_reactive_power = 0
-            elif bus.type == 'PQ':
-                specified_real_power = bus.real_power
-                specified_reactive_power = bus.reactive_power
-            else:
-                print('Incorrect bus type, setting vals to 0')
-                specified_real_power = 0
-                specified_reactive_power = 0
-
-            # Calculate mismatch (injection - specified power)
-            real_power_mismatch[k] = specified_real_power - injected_real_power
-            reactive_power_mismatch[k] = specified_reactive_power - injected_reactive_power
-
-        # Combine the real and reactive mismatches into one array (stacked)
-        power_mismatch = np.concatenate((real_power_mismatch, reactive_power_mismatch))
-
-        return power_mismatch
-
-    def compute_power_injection_temp(self, busDict, yBusFrame, voltageVector):
-        """ Computes real (P) and reactive (Q) power injections using V * conj(I) """
+    def compute_power_injection(self, voltageVector):
         V = voltageVector
-        I = yBusFrame.values @ V  # I = Ybus * V
-        S = V * np.conj(I)  # complex power injection at each bus
+        I = self.calc_ybus().values @ V
+        S = V * np.conj(I)
 
-        Px = dict()
-        Qx = dict()
+        print("\n--- Power Injection Check ---")
+        for i, bus_name in enumerate(self.buses):
+            print(
+                f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {-S[i].imag:.4f}")
 
-        for idx, bus_name in enumerate(busDict.keys()):
-            Px[bus_name] = S[idx].real
-            Qx[bus_name] = -S[idx].imag  # Note: Q = -Im(V * conj(I))
-
+        Px = {bus: S[k].real for k, bus in enumerate(self.buses)}
+        Qx = {bus: -S[k].imag for k, bus in enumerate(self.buses)}
         return [Px, Qx]
 
-    # Power Mismatch Calculations, Slack has none, PQ includes both and PV excludes.
-    def compute_power_mismatch_temp(self, busDict, yBusFrame, voltageVector):
-        Vpu = np.ones(Bus.counter)
-        delta = np.zeros(Bus.counter)
-        busNames = list(busDict.keys())
-        # Get the results of the injection
-        injection_results = self.compute_power_injection(busDict, yBusFrame, voltageVector)
+    def compute_power_mismatch(self, voltageVector):
+        P_inj, Q_inj = self.compute_power_injection(voltageVector)
 
-        # Initialize mismatch arrays for real (P) and reactive (Q) power
-        real_power_mismatch = np.zeros(Bus.counter)
-        reactive_power_mismatch = np.zeros(Bus.counter)
-        for k in range(len(busNames)):
-        # 1. Loop through to get voltages and angles
-        # 2. Separate Call compute_power_injection (Will take voltages and angles)
-        # 3. loop through generators and loads to find given power
-            # Need to add those to main, do later
-        # Subtract the two values
-            bus_name = busNames[k]
-            bus = busDict[bus_name]
+        deltaP = []  # ∆P for all non-slack buses (PQ + PV)
+        deltaQ = []  # ∆Q only for PQ buses
 
-            Vpu[k] = busDict[bus_name].vpu
-            delta[k] = busDict[bus_name].delta
-            #Compute the real and reactive power injection from the method
-            injected_real_power = injection_results[0][bus_name]
-            injected_reactive_power = injection_results[1][bus_name]
+        for name, bus in self.buses.items():
+            if bus.type != 'Slack':
+                # Start with load demand (which is negative contribution)
+                P_spec = -bus.real_power
 
-            # Fetch the specified (expected) power for the bus
-            if bus.type == 'Slack':
-                specified_real_power = 0  # Real power demand or generation
-                specified_reactive_power = 0  # Reactive power demand or generation
-            elif bus.type == 'PV':
-                specified_real_power = bus.real_power
-                specified_reactive_power = 0
-            elif bus.type == 'PQ':
-                specified_real_power = bus.real_power
-                specified_reactive_power = bus.reactive_power
-            else:
-                print('Incorrect bus type, setting vals to 0')
-                specified_real_power = 0
-                specified_reactive_power = 0
+                # Add generator contribution if this bus has a generator
+                for gen in self.generators.values():
+                    if gen.bus.name == name:
+                        P_spec += gen.mw_setpoint  # this is in pu already
 
-        # Calculate mismatch (injection - specified power)
-            real_power_mismatch[k] = specified_real_power - injected_real_power
-            reactive_power_mismatch[k] = specified_reactive_power - injected_reactive_power
+                deltaP.append(P_spec - P_inj[name])
 
-        # Combine the real and reactive mismatches into one array (stacked)
-        power_mismatch = np.concatenate((real_power_mismatch, reactive_power_mismatch))
+        for name, bus in self.buses.items():
+            if bus.type == 'PQ':
+                Q_spec = -bus.reactive_power  # only load matters
+                deltaQ.append(Q_spec - Q_inj[name])
 
-        return power_mismatch
+        return np.array(deltaP + deltaQ)
 
 # Jacobian - Milestone 7 -JN
 class Jacobian:
