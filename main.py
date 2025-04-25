@@ -12,7 +12,7 @@ pd.options.display.width = 0
 # =============================
 # Initialize the 7-Bus Circuit
 # =============================
-seven_circuit = Circuit('Seven Bus System', base_mva=100.0)
+seven_circuit = Circuit('Seven Bus System', 'Fault_Study', base_mva=100.0)
 
 # Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
@@ -52,7 +52,10 @@ seven_circuit.add_load('load4', seven_circuit.buses["Bus4"], 100, 70)
 seven_circuit.add_load('load5', seven_circuit.buses["Bus5"], 100, 65)
 
 # Bus 7 has generator output (PV type: 200 MW, V = 1.0 pu)
-seven_circuit.add_generator('generator2', seven_circuit.buses["Bus7"], voltage_setpoint=1.0, mw_setpoint=200)
+seven_circuit.add_generator('generator1', seven_circuit.buses["Bus1"], voltage_setpoint=1.0, mw_setpoint=200,
+                            x0=0.05, x1=0.12, x2=0.14, ground_imp=0+0j, isGrounded=True)
+seven_circuit.add_generator('generator2', seven_circuit.buses["Bus7"], voltage_setpoint=1.0, mw_setpoint=200,
+                            x0=0.05, x1=0.12, x2=0.14, ground_imp=1+0j, isGrounded=True)
 
 # =============================
 # Print Per-Unit Info
@@ -77,11 +80,31 @@ for key, line in seven_circuit.transmission_lines.items():
 # =============================
 # Ybus Matrix Output
 # =============================
-print("\n===================")
-print(" Ybus Admittance Matrix (Rounded)")
-print("===================")
-ybus = seven_circuit.calc_ybus()
-print(ybus.round(5).to_string())
+if seven_circuit.analysis_mode == 'Power_Flow':
+    print("\n===================")
+    print(" Ybus Admittance Matrix (Rounded)")
+    print("===================")
+    ybus = seven_circuit.calc_ybus()
+    print(ybus.round(5).to_string())
+# =============================
+# Fault Ybus Matrix Output
+# =============================
+if seven_circuit.analysis_mode == 'Fault_Study':
+    print("\n===================")
+    print(" Fault Positive Ybus Admittance Matrix (Rounded)")
+    print("===================")
+    ybus = seven_circuit.calc_ybus_sequence()
+    print(ybus.round(5).to_string())
+    print("\n===================")
+    print(" Fault Negative Ybus Admittance Matrix (Rounded)")
+    print("===================")
+    ybus = seven_circuit.calc_ybus_sequence("neg")
+    print(ybus.round(5).to_string())
+    print("\n===================")
+    print(" Fault Zero Ybus Admittance Matrix (Rounded)")
+    print("===================")
+    ybus = seven_circuit.calc_ybus_sequence("zero")
+    print(ybus.round(5).to_string())
 
 # =============================
 # JACOBIAN VALIDATION TEST

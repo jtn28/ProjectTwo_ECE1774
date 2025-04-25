@@ -79,11 +79,8 @@ class TransmissionLine:
             case _:
                 raise ValueError(f"Unknown sequence type: {sequence}")
 
-        Z_pu = Z / (self.Vbase ** 2 / self.Sbase)
-        Y_pu = Y_shunt / (self.Sbase / self.Vbase ** 2)
-
-        Y11 = Y_pu / 2 + 1 / Z_pu
-        Y12 = -1 / Z_pu
+        Y11 = Y_shunt / 2 + 1 / Z
+        Y12 = -1 / Z
         Y21 = Y12
         Y22 = Y11
 

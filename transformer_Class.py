@@ -91,7 +91,7 @@ class Transformer:
         sequence = sequence.lower()
 
         if sequence in ['pos', 'neg']:
-            self.yseries = self.yseries  # Same as positive for ideal transformer
+            pass  # Same as positive for ideal transformer
         elif sequence == 'zero':
             # Handling zero-sequence based on transformer type
             self.yseries = self.zero_sequence_admittance()

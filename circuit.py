@@ -10,9 +10,10 @@ from generator import Generator
 from load import Load
 
 class Circuit:
-    def __init__(self, name:str, base_mva: float = 100):
+    def __init__(self, name:str, analysis_mode: str = "Power_Flow", base_mva: float = 100):
         self.name = name
         self.base_mva = base_mva
+        self.analysis_mode = analysis_mode
         self.buses = {}
         self.transformers = {}
         self.transmission_lines = {}
@@ -20,7 +21,7 @@ class Circuit:
         self.loads = {}
 
 
-    def add_bus(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'Slack'):
+    def add_bus(self, name:str, baseKV:float, vpu:float = 1, delta:float = 0, bus_type:str = 'PQ'):
         bus = Bus(name, baseKV, vpu, delta, bus_type)
         self.buses[bus.name] = bus
         return
@@ -39,9 +40,9 @@ class Circuit:
         return
 
 
-    def add_generator(self, name, bus, voltage_setpoint, mw_setpoint):
+    def add_generator(self, name, bus, voltage_setpoint, mw_setpoint, x0, x1, x2, ground_imp, isGrounded):
         real_pu = mw_setpoint / self.base_mva
-        generator = Generator(name, bus, voltage_setpoint, real_pu)
+        generator = Generator(name, bus, voltage_setpoint, real_pu, x0, x1, x2, ground_imp, isGrounded)
         self.generators[name] = generator
         bus.real_power += real_pu
 

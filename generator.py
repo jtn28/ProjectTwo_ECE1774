@@ -4,9 +4,9 @@ class Generator:
     """Models a generator connected to a power system bus."""
 
     def __init__(self, name: str, bus: Bus, voltage_setpoint: float, mw_setpoint: float,
-        x2_subtransient: float = 0.0,
-        x1_subtransient: float = 0.0,
         x0_subtransient: float = 0.0,
+        x1_subtransient: float = 0.0,
+        x2_subtransient: float = 0.0,
         grounding_impedance: complex = 0 + 0j,
         is_grounded: bool = True
     ):
@@ -33,7 +33,7 @@ class Generator:
         self.grounding_impedance = grounding_impedance if is_grounded else None
         self.is_grounded = is_grounded
 
-    def calc_y_prim_sequence(self, sequence: str = "pos"):
+    def calc_y_primitive_sequence(self, sequence: str = "pos"):
         sequence = sequence.lower()
         y_prim_value = []
         if sequence == "pos":
