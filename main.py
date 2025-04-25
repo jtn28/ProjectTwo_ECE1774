@@ -12,7 +12,7 @@ pd.options.display.width = 0
 # =============================
 # Initialize the 7-Bus Circuit
 # =============================
-seven_circuit = Circuit('Seven Bus System', 'Fault_Study', base_mva=100.0)
+seven_circuit = Circuit('Seven Bus System', 'Power_Flow', base_mva=100.0)
 
 # Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')

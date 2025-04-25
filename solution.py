@@ -37,13 +37,14 @@ class Solution:
 
             # Step 4: Compute Jacobian
             J = Jacobian(self.circuit.buses, self.ybus, voltages).calc_jacobian()
-
+            #print(Jacobian(self.circuit.buses, self.ybus, voltages).get_jacobian_dataframe())
             # Step 5: Solve linear system
             try:
                 dx = np.linalg.solve(J, mismatch_reduced)
             except np.linalg.LinAlgError:
                 raise ValueError("Jacobian is singular or ill-conditioned.")
 
+            #print("hi")
             # Step 6: Apply corrections
             delta_corr = dx[:n_delta]
             v_corr = dx[n_delta:]

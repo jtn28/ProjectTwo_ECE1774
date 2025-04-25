@@ -112,7 +112,7 @@ class Circuit:
                 f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {-S[i].imag:.4f}")
 
         Px = {bus: S[k].real for k, bus in enumerate(self.buses)}
-        Qx = {bus: -S[k].imag for k, bus in enumerate(self.buses)}
+        Qx = {bus: S[k].imag for k, bus in enumerate(self.buses)}
         return [Px, Qx]
 
     def compute_power_mismatch(self, voltageVector):
@@ -208,13 +208,16 @@ class Jacobian:
                 if ki == kj:
                     sum_term = 0
                     for m, bus_m in enumerate(self.buses):
+                        if m == ki:
+                            continue
                         km = self.bus_index[bus_m.name]
                         Y_km = self.ybus.iloc[ki, km]
                         Gm = Y_km.real
                         Bm = Y_km.imag
                         angle_m = self.delta[ki] - self.delta[km]
                         sum_term += self.V[km] * (Gm * np.cos(angle_m) + Bm * np.sin(angle_m))
-                    J2[i, j] = -sum_term + self.V[ki] * Y_kj.real
+                        # Quite note, ran tests, sum_term always equals 0 here, not sure why, maybe not intential?
+                    J2[i, j] = -sum_term
                 else:
                     J2[i, j] = self.V[ki] * (G * np.cos(angle) + B * np.sin(angle))
         return J2
@@ -270,7 +273,7 @@ class Jacobian:
                     sum_term = 0
                     for m, bus_m in enumerate(self.buses):  # all buses
                         km = self.bus_index[bus_m.name]
-                        if km != ki:
+                        if km == ki:
                             continue
                         Y_km = self.ybus.iloc[ki, km]
                         Gm = Y_km.real
@@ -278,7 +281,7 @@ class Jacobian:
                         angle_m = self.delta[ki] - self.delta[km]
                         sum_term += self.V[km] * (Gm * np.sin(angle_m) - Bm * np.cos(angle_m))
                     Bii = self.ybus.iloc[ki, ki].imag
-                    J4[i, j] = -2 * self.V[ki] * Bii - sum_term  # FULL correct formula
+                    J4[i, j] = -2 * self.V[ki] * Bii + sum_term   # FULL correct formula
                 else:
                     J4[i, j] = self.V[ki] * (G * np.sin(angle) - B * np.cos(angle))
 
