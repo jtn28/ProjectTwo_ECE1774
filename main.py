@@ -6,6 +6,7 @@ from bus import Bus
 from bundle import Bundle
 from geometry import Geometry
 from solution import Solution
+from solution import SymFaultSolver
 
 pd.options.display.width = 0
 
@@ -100,14 +101,32 @@ print("\nJacobian Matrix Shape:", jacobian_df.shape)
 print(jacobian_df.to_string())
 
 # =============================
-# Newton-Raphson Power Flow Test
+# Symmetric Faults
 # =============================
+print("\n==============================")
+print(" Symmetric Faults Test")
+print("==============================")
+# Run NR to get V_pre
+solver = Solution(seven_circuit)
+voltages_solution = solver.newton_raphson()
+
+# Simulate symmetrical fault at Bus3
+fault_solver = SymFaultSolver(seven_circuit, voltages_solution)
+fault_results = fault_solver.apply_fault("Bus3")
+
+# Output
+print("\n--- Symmetrical Fault at Bus 3 ---")
+print(f"Fault current: {fault_results['fault_current']:.4f}")
+print("Voltages during fault:")
+for name, V in zip(seven_circuit.buses.keys(), fault_results['voltage_during_fault']):
+    print(f"{name}: |V| = {abs(V):.4f} pu, ∠ = {np.angle(V, deg=True):.2f}°")
+
 print("\n==============================")
 print(" Newton-Raphson Power Flow Test")
 print("==============================")
 
 solver = Solution(seven_circuit)
-voltages_solution = solver.newton_raphson(max_iter=10, tol=1e-4)
+voltages_solution = solver.newton_raphson(max_iter=3, tol=1e-4)
 
 # Step 4: Final Result
 print("\nFinal Voltage Magnitudes and Angles:")
@@ -115,3 +134,5 @@ for name, v in zip(seven_circuit.buses.keys(), voltages_solution):
     mag = np.abs(v)
     angle = np.angle(v, deg=True)
     print(f"{name}: |V| = {mag:.4f} pu, ∠ = {angle:.2f}°")
+
+
