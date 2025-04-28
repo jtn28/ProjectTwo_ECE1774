@@ -120,3 +120,71 @@ class SymFaultSolver:
             "fault_current": Ifault,
             "voltage_during_fault": V_fault
         }
+
+class AsymFaultSolver:
+    def __init__(self, circuit, prefault_voltages, fault_type, fault_impedance: complex=0+0j):
+        """
+        Initialize the symmetrical fault solver using the given Circuit object
+        and the pre-fault voltages (from a solved NR power flow).
+        """
+        self.circuit = circuit
+        self.fault_impedance = fault_impedance
+        self.fault_type = fault_type.upper()
+        self.buses = list(circuit.buses.keys())
+        self.n = len(self.buses)
+        self.V_prefault = prefault_voltages  # ← This is now passed in
+        # Get the 3 z buses
+        self.z_pos = self.circuit.calc_zbus_sequence("pos")
+        self.z_neg = self.circuit.calc_zbus_sequence("neg")
+        self.z_zero = self.circuit.calc_zbus_sequence("zero")
+
+    def run_fault_analysis(self, faulted_bus_name):
+        # Map bus name to index
+        bus_index = self.buses.index(faulted_bus_name)
+        if self.fault_type == "SLG":
+            Z_eq = (self.z_pos.loc[faulted_bus_name, faulted_bus_name] + self.z_neg.loc[faulted_bus_name, faulted_bus_name]
+                    + self.z_zero.loc[faulted_bus_name, faulted_bus_name])
+            fault_current_pos = 3 * self.V_prefault[bus_index] / (Z_eq + self.fault_impedance)
+            fault_current_neg = fault_current_pos
+            fault_current_zero = fault_current_pos
+        elif self.fault_type == "LL":
+            Z_eq = self.z_pos.loc[faulted_bus_name, faulted_bus_name] + self.z_neg.loc[faulted_bus_name, faulted_bus_name]
+            fault_current_pos = np.sqrt(3) * self.V_prefault[bus_index] / (Z_eq + self.fault_impedance)
+            fault_current_neg = -fault_current_pos
+            fault_current_zero = 0
+        elif self.fault_type == "DLG":
+            Z_parallel = ((self.z_neg.loc[faulted_bus_name, faulted_bus_name] * self.z_zero.loc[faulted_bus_name, faulted_bus_name])
+                          / (self.z_neg.loc[faulted_bus_name, faulted_bus_name] + self.z_zero.loc[faulted_bus_name, faulted_bus_name]))
+            Z_eq = self.z_pos.loc[faulted_bus_name, faulted_bus_name] + Z_parallel + self.fault_impedance
+            fault_current_pos = self.V_prefault[bus_index] / Z_eq
+            fault_current_neg = (self.z_zero.loc[faulted_bus_name, faulted_bus_name] / self.z_neg.loc[faulted_bus_name, faulted_bus_name]) * fault_current_pos
+            fault_current_zero = (self.z_neg.loc[faulted_bus_name, faulted_bus_name] / self.z_zero.loc[faulted_bus_name, faulted_bus_name]) * fault_current_pos
+        else:
+            raise ValueError("Invalid fault ype, Choose between SLG, LL or DLG")
+
+        V_pos = self.V_prefault[bus_index] - self.z_pos.loc[faulted_bus_name, faulted_bus_name] * fault_current_pos
+        V_neg = -self.z_neg.loc[faulted_bus_name, faulted_bus_name] * fault_current_neg
+        V_zero = -self.z_zero.loc[faulted_bus_name, faulted_bus_name] * fault_current_zero
+
+        # Phase voltages
+        a = np.exp(1j*2*np.pi/3)
+        A = np.array([
+            [1, 1, 1],
+            [1, a ** 2, a],
+            [1, a, a ** 2]
+        ])
+        V_seq = np.array([V_zero, V_pos, V_neg])
+        V_phase = A @ V_seq
+        magnitudes = np.abs(V_phase)
+        angles_deg = np.degrees(np.angle(V_phase))
+        V_phase_phasors = list(zip(magnitudes, angles_deg))
+        return {
+            "I_pos": fault_current_pos,
+            "I_neg": fault_current_neg,
+            "I_zero": fault_current_zero,
+            "V_pos": V_pos,
+            "V_neg": V_neg,
+            "V_zero": V_zero,
+            "V_phase": V_phase,
+            "V_phase_phasors": V_phase_phasors
+        }

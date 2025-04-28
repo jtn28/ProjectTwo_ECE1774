@@ -10,10 +10,11 @@ from generator import Generator
 from load import Load
 
 class Circuit:
-    def __init__(self, name:str, analysis_mode: str = "Power_Flow", base_mva: float = 100):
+    def __init__(self, name:str, analysis_mode: str = "Power_Flow", fault_type:str = "SYM", base_mva: float = 100):
         self.name = name
         self.base_mva = base_mva
         self.analysis_mode = analysis_mode
+        self.fault_type = fault_type
         self.buses = {}
         self.transformers = {}
         self.transmission_lines = {}
@@ -77,7 +78,7 @@ class Circuit:
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         return y_bus
-    def calc_ybus_sequence(self, sequence: str = "pos"):
+    def calc_zbus_sequence(self, sequence: str = "pos"):
         bus_names = list(self.buses.keys())
         y_bus = pd.DataFrame(0, index=bus_names, columns=bus_names, dtype=complex)
         for item in self.transformers:
@@ -100,16 +101,18 @@ class Circuit:
                     y_bus.loc[row, col] += value
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
-        return y_bus
+        z_bus_values = np.linalg.inv(y_bus.values)
+        z_bus = pd.DataFrame(z_bus_values, index=y_bus.index, columns=y_bus.columns, dtype=complex)
+        return z_bus
     def compute_power_injection(self, voltageVector):
         V = voltageVector
         I = self.calc_ybus().values @ V
         S = V * np.conj(I)
 
-        print("\n--- Power Injection Check ---")
-        for i, bus_name in enumerate(self.buses):
-            print(
-                f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {S[i].imag:.4f}")
+        #print("\n--- Power Injection Check ---")
+        #for i, bus_name in enumerate(self.buses):
+        #    print(
+        #        f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {S[i].imag:.4f}")
 
         Px = {bus: S[k].real for k, bus in enumerate(self.buses)}
         Qx = {bus: S[k].imag for k, bus in enumerate(self.buses)}
