@@ -109,7 +109,7 @@ class Circuit:
         print("\n--- Power Injection Check ---")
         for i, bus_name in enumerate(self.buses):
             print(
-                f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {-S[i].imag:.4f}")
+                f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {S[i].imag:.4f}")
 
         Px = {bus: S[k].real for k, bus in enumerate(self.buses)}
         Qx = {bus: S[k].imag for k, bus in enumerate(self.buses)}
