@@ -1,0 +1,191 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+% Define code styling
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegray},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{Software Documentation}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+This document provides detailed documentation for the software package, describing classes used for modeling power systems components.
+
+\section{Classes}
+
+\subsection{Bus Class}
+
+\subsubsection{Overview}
+The \texttt{Bus} class models an electrical bus in a power network.
+
+\subsubsection{Class Definition}
+\begin{lstlisting}[language=Python, caption=Bus Class Code]
+class Bus:
+    counter = 0
+    
+    def __init__(self, name: str, baseKV: float, vpu: float = 1, delta: float = 0, bus_type: str = 'Slack'):
+        ...
+        
+    def __repr__(self):
+        ...
+\end{lstlisting}
+
+\subsubsection{Attributes}
+\begin{itemize}
+    \item \texttt{name} (str): Name of the bus.
+    \item \texttt{baseKV} (float): Base voltage level (kV).
+    \item \texttt{vpu} (float): Per-unit voltage magnitude.
+    \item \texttt{delta} (float): Voltage angle (degrees).
+    \item \texttt{real\_power} (float): Real power injection.
+    \item \texttt{reactive\_power} (float): Reactive power injection.
+    \item \texttt{type} (str): Bus type ("Slack", "PQ", "PV").
+    \item \texttt{index} (int): Unique identifier for the bus.
+\end{itemize}
+
+\subsubsection{Methods}
+\begin{itemize}
+    \item \texttt{\_\_init\_\_()}: Constructor, validates input and assigns properties.
+    \item \texttt{\_\_repr\_\_()}: Returns readable representation.
+\end{itemize}
+
+\subsection{Conductor Class}
+
+\subsubsection{Overview}
+The \texttt{Conductor} class models an electrical conductor's physical and electrical properties.
+
+\subsubsection{Class Definition}
+\begin{lstlisting}[language=Python, caption=Conductor Class Code]
+class Conductor:
+    def __init__(self, name: str, diameter: float, GMR: float, resistance: float, ampacity: float):
+        ...
+\end{lstlisting}
+
+\subsubsection{Attributes}
+\begin{itemize}
+    \item \texttt{name} (str): Name of the conductor.
+    \item \texttt{diameter} (float): Diameter (feet or specified unit).
+    \item \texttt{GMR} (float): Geometric Mean Radius.
+    \item \texttt{resistance} (float): Electrical resistance (ohms).
+    \item \texttt{ampacity} (float): Maximum current-carrying capacity (amps).
+\end{itemize}
+
+\subsubsection{Methods}
+\begin{itemize}
+    \item \texttt{\_\_init\_\_()}: Constructor.
+\end{itemize}
+
+\subsection{Bundle Class}
+
+\subsubsection{Overview}
+The \texttt{Bundle} class models a bundle of multiple conductors for high-voltage transmission.
+
+\subsubsection{Class Definition}
+\begin{lstlisting}[language=Python, caption=Bundle Class Code]
+class Bundle:
+    def __init__(self, name: str, num_conductors: int, spacing: float, conductor: Conductor):
+        ...
+        
+    def calculate_dsc(self):
+        ...
+        
+    def calculate_dsl(self):
+        ...
+        
+    def __repr__(self):
+        ...
+\end{lstlisting}
+
+\subsubsection{Attributes}
+\begin{itemize}
+    \item \texttt{name} (str): Name of the bundle.
+    \item \texttt{num\_conductors} (int): Number of conductors in the bundle.
+    \item \texttt{spacing} (float): Spacing between conductors (feet).
+    \item \texttt{conductor} (\texttt{Conductor}): Associated conductor object.
+\end{itemize}
+
+\subsubsection{Methods}
+\begin{itemize}
+    \item \texttt{calculate\_dsc()}: Calculates the bundle's equivalent radius (\( D_{sc} \)).
+    \item \texttt{calculate\_dsl()}: Calculates the bundle's self-GMR (\( D_{sl} \)).
+    \item \texttt{\_\_repr\_\_()}: Provides a readable summary.
+\end{itemize}
+
+\subsection{Generator Class}
+
+\subsubsection{Overview}
+The \texttt{Generator} class models a generator attached to a bus in a power network.
+
+\subsubsection{Class Definition}
+\begin{lstlisting}[language=Python, caption=Generator Class Code]
+class Generator:
+    def __init__(self, name: str, bus, voltage_setpoint: float, mw_setpoint: float):
+        ...
+\end{lstlisting}
+
+\subsubsection{Attributes}
+\begin{itemize}
+    \item \texttt{name} (str): Name of the generator.
+    \item \texttt{bus} (Bus): Bus object to which the generator is connected.
+    \item \texttt{voltage\_setpoint} (float): Desired bus voltage (p.u.).
+    \item \texttt{mw\_setpoint} (float): Real power output (MW).
+\end{itemize}
+
+\subsubsection{Methods}
+\begin{itemize}
+    \item \texttt{\_\_init\_\_()}: Constructor.
+\end{itemize}
+
+\section{Examples}
+
+\subsection{Example: Creating a Bus and Generator}
+\begin{lstlisting}[language=Python]
+b1 = Bus(name="Bus 1", baseKV=138.0, vpu=1.0, delta=0.0, bus_type='Slack')
+g1 = Generator(name="Gen 1", bus=b1, voltage_setpoint=1.0, mw_setpoint=100.0)
+print(b1)
+print(g1)
+\end{lstlisting}
+
+\subsection{Example: Creating a Bundle}
+\begin{lstlisting}[language=Python]
+c1 = Conductor(name="Drake", diameter=1.108, GMR=0.460, resistance=0.028, ampacity=845)
+bundle = Bundle(name="Bundle 1", num_conductors=2, spacing=18, conductor=c1)
+print(bundle)
+\end{lstlisting}
+
+\end{document}
