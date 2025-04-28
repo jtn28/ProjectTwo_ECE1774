@@ -73,3 +73,50 @@ class Solution:
             print("Newton-Raphson did not converge in allotted iterations.")
 
         return voltages
+
+
+class SymFaultSolver:
+    def __init__(self, circuit, prefault_voltages):
+        """
+        Initialize the symmetrical fault solver using the given Circuit object
+        and the pre-fault voltages (from a solved NR power flow).
+        """
+        self.circuit = circuit
+        self.ybus = circuit.calc_ybus().values
+        self.buses = list(circuit.buses.keys())
+        self.n = len(self.buses)
+        self.V_prefault = prefault_voltages  # ← This is now passed in
+
+    def apply_fault(self, faulted_bus_name):
+        """
+        Solves for a 3-phase symmetrical fault at the given bus.
+
+        Parameters:
+        faulted_bus_name (str): The name of the bus where the fault occurs.
+
+        Returns:
+        dict: Fault current and post-fault voltages.
+        """
+        # Map bus name to index
+        bus_index = self.buses.index(faulted_bus_name)
+
+        # Calculate Zbus from Ybus
+        Zbus = np.linalg.inv(self.ybus)
+
+        # Thevenin impedance at the faulted bus (diagonal element)
+        Zii = Zbus[bus_index, bus_index]
+
+        # Fault current: V / Zth
+        Ifault = self.V_prefault[bus_index] / Zii
+
+        # Voltage drop due to fault
+        deltaV = Ifault * Zbus[:, bus_index]
+
+        # Post-fault voltages
+        V_fault = self.V_prefault - deltaV
+
+        return {
+            "fault_bus": faulted_bus_name,
+            "fault_current": Ifault,
+            "voltage_during_fault": V_fault
+        }
