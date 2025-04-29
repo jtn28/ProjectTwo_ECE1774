@@ -18,3 +18,13 @@ class Generator:
 
     def __repr__(self):
         return f"Generator(name={self.name}, bus={self.bus.name}, Vsp={self.voltage_setpoint} p.u., Pgen={self.mw_setpoint} MW)"
+
+class SolarGenerator:
+    def __init__(self, name, bus, rated_power, irradiance_profile):
+        self.name = name
+        self.bus = bus
+        self.rated_power = rated_power
+        self.irradiance_profile = irradiance_profile
+
+    def get_power_output(self, time_index):
+        return self.rated_power * self.irradiance_profile[time_index]

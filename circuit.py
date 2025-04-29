@@ -7,6 +7,8 @@ from geometry import Geometry
 from transformer_Class import Transformer
 from transmissionLine import TransmissionLine
 from generator import Generator
+from generator import SolarGenerator
+
 from load import Load
 
 class Circuit:
@@ -17,6 +19,7 @@ class Circuit:
         self.transformers = {}
         self.transmission_lines = {}
         self.generators = {}
+        self.solar_generator = {}
         self.loads = {}
 
 
@@ -44,6 +47,10 @@ class Circuit:
         generator = Generator(name, bus, voltage_setpoint, real_pu)
         self.generators[name] = generator
         bus.real_power += real_pu
+
+    def add_solar_generator(self, name, bus, rated_power, irradiance_profile):
+        solar_gen = SolarGenerator(name, bus, rated_power, irradiance_profile)
+        self.solar_generators[name] = solar_gen
 
     # subtract because gen is injection
 
@@ -87,7 +94,7 @@ class Circuit:
                 f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {-S[i].imag:.4f}")
 
         Px = {bus: S[k].real for k, bus in enumerate(self.buses)}
-        Qx = {bus: -S[k].imag for k, bus in enumerate(self.buses)}
+        Qx = {bus: S[k].imag for k, bus in enumerate(self.buses)}
         return [Px, Qx]
 
     def compute_power_mismatch(self, voltageVector):

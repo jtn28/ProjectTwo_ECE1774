@@ -55,6 +55,10 @@ seven_circuit.add_load('load5', seven_circuit.buses["Bus5"], 100, 65)
 # Bus 7 has generator output (PV type: 200 MW, V = 1.0 pu)
 seven_circuit.add_generator('generator2', seven_circuit.buses["Bus7"], voltage_setpoint=1.0, mw_setpoint=200)
 
+# Bus 5 has a solar generator (rated 50 MW, 80% irradiance)
+irradiance_profile = [0.8]  # Can be expanded for time series simulation
+seven_circuit.add_solar_generator('solar1', seven_circuit.buses["Bus5"], rated_power=50, irradiance_profile=irradiance_profile)
+
 # =============================
 # Print Per-Unit Info
 # =============================
