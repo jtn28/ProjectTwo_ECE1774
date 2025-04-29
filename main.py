@@ -14,8 +14,18 @@ pd.options.display.width = 0
 # =============================
 # Initialize the 7-Bus Circuit
 # =============================
+# PROJECT 3: Change over time
+# Add a 24 long vector of load multipliers, going to be somewhat based on real life, using following website and total demand of U.S.
+#https://www.eia.gov/electricity/gridmonitor/expanded-view/electric_overview/US48/US48/ElectricityRegionDemand-3/edit
+# Will then plot the voltages at each bus over the duration and put it on a graph
+#Load Total Vals [435573,411406,393544,379767,370362,368644,374523,392282,410190,421570,430004,439108,446496,455110,463096,470031,476650,484158,490066,491050,488953,485754,476534,457942]
+load_mult = [435573,411406,393544,379767,370362,368644,374523,392282,410190,421570,430004,439108,446496,455110,463096,470031,476650,484158,490066,491050,488953,485754,476534,457942]
+list_position = 0
+for item in load_mult:
+    load_mult[list_position] = item / 476650
+    list_position += 1
 # Power_Flow and Fault_Study
-seven_circuit = Circuit('Seven Bus System', 'Fault_Study', "DLG", base_mva=100.0)
+seven_circuit = Circuit('Seven Bus System', 'Power_Flow', "DLG", base_mva=100.0)
 
 # Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
@@ -186,7 +196,6 @@ if seven_circuit.analysis_mode == "Power_Flow":
     print("==============================")
     solver = Solution(seven_circuit)
     voltages_solution = solver.newton_raphson(max_iter=10, tol=1e-4)
-
     # Step 4: Final Result
     print("\nFinal Voltage Magnitudes and Angles:")
     for name, v in zip(seven_circuit.buses.keys(), voltages_solution):
@@ -194,4 +203,8 @@ if seven_circuit.analysis_mode == "Power_Flow":
         angle = np.angle(v, deg=True)
         print(f"{name}: |V| = {mag:.4f} pu, ∠ = {angle:.2f}°")
 
+# Project 3 function
+if seven_circuit.analysis_mode == "Power_Flow":
+    solver = Solution(seven_circuit)
+    solver.hourly_load_updates(load_mult)
 

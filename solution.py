@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from circuit import Jacobian
 
 class Solution:
@@ -14,7 +15,7 @@ class Solution:
         voltages = self.voltages.copy()
 
         for iteration in range(max_iter):
-            print(f"\n--- Iteration {iteration + 1} ---")
+            #print(f"\n--- Iteration {iteration + 1} ---")
 
             # Step 1: Compute full mismatch vector
             mismatch = self.circuit.compute_power_mismatch(voltages)
@@ -30,9 +31,9 @@ class Solution:
 
             # Step 3: Check convergence
             max_mismatch = np.max(np.abs(mismatch_reduced))
-            print(f"Max mismatch: {max_mismatch:.6f}")
+            #print(f"Max mismatch: {max_mismatch:.6f}")
             if max_mismatch < tol:
-                print("Convergence achieved.")
+                #print("Convergence achieved.")
                 break
 
             # Step 4: Compute Jacobian
@@ -65,13 +66,107 @@ class Solution:
             ])
 
             # Debug print
-            for name, v in zip(self.circuit.buses.keys(), voltages):
-                print(f"{name}: |V| = {np.abs(v):.5f} pu, ∠ = {np.angle(v, deg=True):.2f}°")
+            #for name, v in zip(self.circuit.buses.keys(), voltages):
+            #    print(f"{name}: |V| = {np.abs(v):.5f} pu, ∠ = {np.angle(v, deg=True):.2f}°")
 
         else:
             print("Newton-Raphson did not converge in allotted iterations.")
 
         return voltages
+
+    def hourly_load_updates(self, load_multipliers: list):
+        initial_powers = []
+        voltage_results = []
+        for key, item in self.circuit.buses.items():
+            Pinit = item.real_power
+            Qinit = item.reactive_power
+            initial_powers.append([key, Pinit, Qinit])
+        for mult in load_multipliers:
+            for key, item in self.circuit.buses.items():
+                for row in initial_powers:
+                    if row[0] == key and (key == 'Bus3' or key == 'Bus4' or key == 'Bus5'):
+                        item.real_power = row[1] * mult
+                        item.reactive_power = row[2] * mult
+
+            # Load values have changed now
+            voltage_temp = self.newton_raphson()
+            voltage_results.append(voltage_temp)
+        # Once all values stored in voltage results, start setting up lists to store them
+        bus1vals = []
+        bus2vals = []
+        bus3vals = []
+        bus4vals = []
+        bus5vals = []
+        bus6vals = []
+        bus7vals = []
+        for row in voltage_results:
+            # Going to append magnitudes to make the plot cleaner
+            bus1vals.append(abs(row[0]))
+            bus2vals.append(abs(row[1]))
+            bus3vals.append(abs(row[2]))
+            bus4vals.append(abs(row[3]))
+            bus5vals.append(abs(row[4]))
+            bus6vals.append(abs(row[5]))
+            bus7vals.append(abs(row[6]))
+
+        busTotals = [bus1vals, bus2vals, bus3vals, bus4vals, bus5vals, bus6vals, bus7vals]
+        x = list(range(len(bus1vals)))
+        width = 0.1
+
+        # Create two subplots: one for all buses, one excluding bus 1 and 7
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
+        ### Subplot 1: All buses ###
+        all_values = [val for sublist in busTotals for val in sublist]
+        y_min = min(all_values)
+        y_max = max(all_values)
+        pad = (y_max - y_min) / 10
+
+        for idx, values in enumerate(busTotals):
+            offset = width * idx
+            ax1.bar([xi + offset for xi in x], values, width=width, label=f'Bus {idx + 1}')
+
+        ax1.set_ylim(y_min - pad, y_max + pad)
+        ax1.set_ylabel("Voltage (pu)")
+        ax1.set_title("All Buses")
+        ax1.grid(axis='y')
+        ax1.legend()
+
+        ### Subplot 2: Buses 2 through 6 ###
+        busSubset = busTotals[1:6]
+        subset_values = [val for sublist in busSubset for val in sublist]
+        y_min2 = min(subset_values)
+        y_max2 = max(subset_values)
+        pad2 = (y_max2 - y_min2) / 10
+
+        for idx, values in enumerate(busSubset):
+            offset = width * idx
+            ax2.bar([xi + offset for xi in x], values, width=width,
+                    label=f'Bus {idx + 2}')  # +2 accounts for skipped bus 1
+
+        ax2.set_ylim(y_min2 - pad2, y_max2 + pad2)
+        ax2.set_xlabel("Hour")
+        ax2.set_ylabel("Voltage (pu)")
+        ax2.set_title("Buses 2 through 6")
+        ax2.grid(axis='y')
+        ax2.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+        #for values in busTotals:
+        #    y_min = min(values)
+         #   y_max = max(values)
+         #   pad = (y_max - y_min) / 10
+        #    plt.bar(x, values)
+         #
+         #   plt.xlabel("Hour")
+         #   plt.ylabel("Voltage (pu)")
+         #   plt.title(f'Voltage magnitudes at Bus {bus_location}')
+         #   plt.grid(axis='y')
+         #   plt.show()
+         #   bus_location += 1
+        return
 
 
 class SymFaultSolver:
