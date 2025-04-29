@@ -44,7 +44,6 @@ class Solution:
             except np.linalg.LinAlgError:
                 raise ValueError("Jacobian is singular or ill-conditioned.")
 
-            #print("hi")
             # Step 6: Apply corrections
             delta_corr = dx[:n_delta]
             v_corr = dx[n_delta:]
@@ -82,7 +81,7 @@ class SymFaultSolver:
         and the pre-fault voltages (from a solved NR power flow).
         """
         self.circuit = circuit
-        self.ybus = circuit.calc_ybus().values
+        self.ybus = circuit.calc_ybus_sequence().values
         self.buses = list(circuit.buses.keys())
         self.n = len(self.buses)
         self.V_prefault = prefault_voltages  # ← This is now passed in
@@ -107,6 +106,8 @@ class SymFaultSolver:
         Zii = Zbus[bus_index, bus_index]
 
         # Fault current: V / Zth
+        # TESTING TO ENSURE FAULT IS GOOD, RAPHSON IS MESSED UP, SO TESTING VALUE FROM POWERWORLD DIRECTLY
+        # Bus 3 Fault, PU Volt 0.92080, angle -5.45
         Ifault = self.V_prefault[bus_index] / Zii
 
         # Voltage drop due to fault
@@ -115,9 +116,14 @@ class SymFaultSolver:
         # Post-fault voltages
         V_fault = self.V_prefault - deltaV
 
+        Ifault_mag = np.abs(Ifault)
+        Ifault_angle = np.degrees(np.angle(Ifault))
+
         return {
             "fault_bus": faulted_bus_name,
             "fault_current": Ifault,
+            "fault_current_mag": Ifault_mag,
+            "fault_current_angle": Ifault_angle,
             "voltage_during_fault": V_fault
         }
 

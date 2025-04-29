@@ -14,7 +14,8 @@ pd.options.display.width = 0
 # =============================
 # Initialize the 7-Bus Circuit
 # =============================
-seven_circuit = Circuit('Seven Bus System', 'Fault_Study', "LL", base_mva=100.0)
+# Power_Flow and Fault_Study
+seven_circuit = Circuit('Seven Bus System', 'Fault_Study', "DLG", base_mva=100.0)
 
 # Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
@@ -43,8 +44,8 @@ seven_circuit.add_transmission_line("L6", seven_circuit.buses["Bus4"], seven_cir
 # =============================
 # Transformers
 # =============================
-seven_circuit.add_transformer('T1', seven_circuit.buses["Bus1"], seven_circuit.buses["Bus2"], 125, 8.5, 10)
-seven_circuit.add_transformer('T2', seven_circuit.buses["Bus7"], seven_circuit.buses["Bus6"], 200, 10.5, 12)
+seven_circuit.add_transformer('T1', seven_circuit.buses["Bus1"], seven_circuit.buses["Bus2"], 125, 8.5, 10, "DELTA-Y", 0+0j, (1/529)+0j)
+seven_circuit.add_transformer('T2', seven_circuit.buses["Bus7"], seven_circuit.buses["Bus6"], 200, 10.5, 12, "Y-DELTA", 0+0j, 0+0j)
 
 # =============================
 # Loads and Generators
@@ -54,10 +55,10 @@ seven_circuit.add_load('load4', seven_circuit.buses["Bus4"], 100, 70)
 seven_circuit.add_load('load5', seven_circuit.buses["Bus5"], 100, 65)
 
 # Bus 7 has generator output (PV type: 200 MW, V = 1.0 pu)
-seven_circuit.add_generator('generator1', seven_circuit.buses["Bus1"], voltage_setpoint=1.0, mw_setpoint=200,
+seven_circuit.add_generator('generator1', seven_circuit.buses["Bus1"], voltage_setpoint=1.0, mw_setpoint=116,
                             x0=0.05, x1=0.12, x2=0.14, ground_imp=0+0j, isGrounded=True)
 seven_circuit.add_generator('generator2', seven_circuit.buses["Bus7"], voltage_setpoint=1.0, mw_setpoint=200,
-                            x0=0.05, x1=0.12, x2=0.14, ground_imp=1+0j, isGrounded=True)
+                            x0=0.05, x1=0.12, x2=0.14, ground_imp=0+0j, isGrounded=True)
 
 # =============================
 # Print Per-Unit Info
@@ -95,17 +96,17 @@ elif seven_circuit.analysis_mode == 'Fault_Study':
     print("\n===================")
     print(" Fault Positive Ybus Admittance Matrix (Rounded)")
     print("===================")
-    ybus = seven_circuit.calc_zbus_sequence()
+    ybus = seven_circuit.calc_ybus_sequence()
     print(ybus.round(5).to_string())
     print("\n===================")
     print(" Fault Negative Ybus Admittance Matrix (Rounded)")
     print("===================")
-    ybus = seven_circuit.calc_zbus_sequence("neg")
+    ybus = seven_circuit.calc_ybus_sequence("neg")
     print(ybus.round(5).to_string())
     print("\n===================")
     print(" Fault Zero Ybus Admittance Matrix (Rounded)")
     print("===================")
-    ybus = seven_circuit.calc_zbus_sequence("zero")
+    ybus = seven_circuit.calc_ybus_sequence("zero")
     print(ybus.round(5).to_string())
 else:
     raise ValueError("Invalid Analysis Mode")
@@ -144,6 +145,7 @@ if seven_circuit.analysis_mode == 'Fault_Study' and seven_circuit.fault_type == 
     # Output
     print("\n--- Symmetrical Fault at Bus 3 ---")
     print(f"Fault current: {fault_results['fault_current']:.4f}")
+    print(f"Fault current Phasor: {fault_results['fault_current_mag']:.4f} ∠ = {fault_results['fault_current_angle']:.2f}")
     print("Voltages during fault:")
     for name, V in zip(seven_circuit.buses.keys(), fault_results['voltage_during_fault']):
         print(f"{name}: |V| = {abs(V):.4f} pu, ∠ = {np.angle(V, deg=True):.2f}°")
@@ -165,6 +167,10 @@ elif seven_circuit.analysis_mode == 'Fault_Study' and seven_circuit.fault_type !
     print(f"Positive Fault current: {fault_results['I_pos']:.4f}")
     print(f"Negative Fault current: {fault_results['I_neg']:.4f}")
     print(f"Zero Fault current: {fault_results['I_zero']:.4f}")
+    print(f"Fault current Magnitudes:")
+    print(f"Positive Fault current: {np.abs(fault_results['I_pos']):.4f}")
+    print(f"Negative Fault current: {np.abs(fault_results['I_neg']):.4f}")
+    print(f"Zero Fault current: {np.abs(fault_results['I_zero']):.4f}")
     print("Voltages at bus fault:")
     print(f"Positive Fault current: {fault_results['V_pos']:.4f}")
     print(f"Negative Fault current: {fault_results['V_neg']:.4f}")
@@ -179,7 +185,7 @@ if seven_circuit.analysis_mode == "Power_Flow":
     print(" Newton-Raphson Power Flow Test")
     print("==============================")
     solver = Solution(seven_circuit)
-    voltages_solution = solver.newton_raphson(max_iter=10, tol=1e-9)
+    voltages_solution = solver.newton_raphson(max_iter=10, tol=1e-4)
 
     # Step 4: Final Result
     print("\nFinal Voltage Magnitudes and Angles:")

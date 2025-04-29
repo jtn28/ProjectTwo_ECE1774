@@ -35,17 +35,18 @@ class Generator:
 
     def calc_y_primitive_sequence(self, sequence: str = "pos"):
         sequence = sequence.lower()
-        y_prim_value = []
         if sequence == "pos":
             """Returns the primitive admittance for the negative sequence network."""
             if self.x1_subtransient == 0:
                 y_prim_value = complex("inf")  # Acts like a short circuit
-            y_prim_value = 1 / complex(0, self.x1_subtransient)
+            else:
+                y_prim_value = 1 / complex(0, self.x1_subtransient)
         elif sequence == "neg":
             """Returns the primitive admittance for the negative sequence network."""
             if self.x2_subtransient == 0:
                 y_prim_value = complex("inf")  # Acts like a short circuit
-            y_prim_value = 1 / complex(0, self.x2_subtransient)
+            else:
+                y_prim_value = 1 / complex(0, self.x2_subtransient)
         elif sequence == "zero":
             """Returns the primitive admittance for the zero sequence network."""
             if not self.is_grounded:
@@ -53,7 +54,8 @@ class Generator:
             total_impedance = complex(0, self.x0_subtransient) + self.grounding_impedance
             if total_impedance == 0:
                 y_prim_value = complex("inf")  # Solidly grounded, zero impedance
-            y_prim_value = 1 / total_impedance
+            else:
+                y_prim_value = 1 / total_impedance
         else:
             raise ValueError(f"Unknown sequence type: {sequence}")
 

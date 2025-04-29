@@ -28,8 +28,8 @@ class Circuit:
         return
 
     def add_transformer(self, name: str, bus1: Bus, bus2: Bus, power_rating: float, impedance_percent: float,
-                 x_over_r_ratio: float):
-        transformer = Transformer(name, bus1, bus2, power_rating, impedance_percent, x_over_r_ratio)
+                 x_over_r_ratio: float, connection: str, ground1:complex, ground2:complex):
+        transformer = Transformer(name, bus1, bus2, power_rating, impedance_percent, x_over_r_ratio, self.base_mva, connection, ground1, ground2)
         instance = (transformer.name, transformer.bus1, transformer.bus2)
         self.transformers[instance] = transformer
         return
@@ -78,6 +78,35 @@ class Circuit:
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         return y_bus
+    def calc_ybus_sequence(self, sequence: str = "pos"):
+        bus_names = list(self.buses.keys())
+        y_bus = pd.DataFrame(0, index=bus_names, columns=bus_names, dtype=complex)
+        for item in self.transformers:
+            prim = self.transformers[item].calc_y_primitive_sequence(sequence)
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        for item in self.transmission_lines:
+            prim = self.transmission_lines[item].calc_y_primitive_sequence(sequence)
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        for item in self.generators:
+            prim = self.generators[item].calc_y_primitive_sequence(sequence)
+            for row in prim.index:
+                for col in prim.columns:
+                    value = prim.loc[row, col]
+                    y_bus.loc[row, col] += value
+        if sequence != "zero":
+            for item in self.loads:
+                S = self.loads[item].real_power + 1j * self.loads[item].reactive_power
+                y_bus.loc[self.loads[item].bus.name, self.loads[item].bus.name] += S
+        # Currently here to make it easier to debug, remove print statement the final implementation
+        #print(y_bus)
+        return y_bus
+
     def calc_zbus_sequence(self, sequence: str = "pos"):
         bus_names = list(self.buses.keys())
         y_bus = pd.DataFrame(0, index=bus_names, columns=bus_names, dtype=complex)
@@ -99,19 +128,25 @@ class Circuit:
                 for col in prim.columns:
                     value = prim.loc[row, col]
                     y_bus.loc[row, col] += value
+        if sequence != "zero":
+            for item in self.loads:
+                S = self.loads[item].real_power + 1j * self.loads[item].reactive_power
+                y_bus.loc[self.loads[item].bus.name, self.loads[item].bus.name] += S
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         z_bus_values = np.linalg.inv(y_bus.values)
         z_bus = pd.DataFrame(z_bus_values, index=y_bus.index, columns=y_bus.columns, dtype=complex)
         return z_bus
+
     def compute_power_injection(self, voltageVector):
         V = voltageVector
-        I = self.calc_ybus().values @ V
+        ybus = self.calc_ybus()
+        I = ybus.values @ V
         S = V * np.conj(I)
 
-        #print("\n--- Power Injection Check ---")
+       # print("\n--- Power Injection Check ---")
         #for i, bus_name in enumerate(self.buses):
-        #    print(
+       #     print(
         #        f"{bus_name}: V = {V[i]:.4f}, I = {I[i]:.4f}, S = {S[i]:.4f} -> P = {S[i].real:.4f}, Q = {S[i].imag:.4f}")
 
         Px = {bus: S[k].real for k, bus in enumerate(self.buses)}
@@ -132,11 +167,9 @@ class Circuit:
                 # Add generator contribution if this bus has a generator
                 for gen in self.generators.values():
                     if gen.bus.name == name:
-                        P_spec += gen.mw_setpoint  # this is in pu already
+                        P_spec += 2*gen.mw_setpoint  # this is in pu already
 
                 deltaP.append(P_spec - P_inj[name])
-
-        for name, bus in self.buses.items():
             if bus.type == 'PQ':
                 Q_spec = -bus.reactive_power  # only load matters
                 deltaQ.append(Q_spec - Q_inj[name])
@@ -211,9 +244,9 @@ class Jacobian:
                 if ki == kj:
                     sum_term = 0
                     for m, bus_m in enumerate(self.buses):
-                        if m == ki:
-                            continue
                         km = self.bus_index[bus_m.name]
+                        if km == ki:
+                            continue
                         Y_km = self.ybus.iloc[ki, km]
                         Gm = Y_km.real
                         Bm = Y_km.imag
@@ -241,13 +274,14 @@ class Jacobian:
                     # Diagonal element
                     sum_term = 0
                     for m, bus_m in enumerate(self.buses):
-                        if m == ki:
+                        km = self.bus_index[bus_m.name]
+                        if km == ki:
                             continue
-                        Y_km = self.ybus.iloc[ki, m]
+                        Y_km = self.ybus.iloc[ki, km]
                         G = Y_km.real
                         B = Y_km.imag
-                        angle_m = self.delta[ki] - self.delta[m]
-                        sum_term += self.V[m] * (G * np.cos(angle_m) + B * np.sin(angle_m))
+                        angle_m = self.delta[ki] - self.delta[km]
+                        sum_term += self.V[km] * (G * np.cos(angle_m) + B * np.sin(angle_m))
                     J3[i, j] = self.V[ki] * sum_term  # POSITIVE — NOT NEGATIVE
                 else:
                     # Off-diagonal

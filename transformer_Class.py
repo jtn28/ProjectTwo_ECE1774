@@ -91,27 +91,37 @@ class Transformer:
         sequence = sequence.lower()
 
         if sequence in ['pos', 'neg']:
-            pass  # Same as positive for ideal transformer
+            return self.calc_y_primitive()
         elif sequence == 'zero':
             # Handling zero-sequence based on transformer type
-            self.yseries = self.zero_sequence_admittance()
-
-        return self.calc_y_primitive()
+            return self.zero_sequence_admittance()
 
     def zero_sequence_admittance(self):
         match self.connection_type:
             case "Y-Y":
                 y_ground1 = 1 / self.ground_imp_1 if self.ground_imp_1 != 0 else complex("inf")
                 y_ground2 = 1 / self.ground_imp_2 if self.ground_imp_2 != 0 else complex("inf")
-                return 1 / (complex(self.rpu, self.xpu) + 1 / (y_ground1 + y_ground2)) if y_ground1 or y_ground2 else 0
+                self.yseries =  1 / (complex(self.rpu, self.xpu) + 1 / (y_ground1 + y_ground2)) if y_ground1 or y_ground2 else 0
+                return self.calc_y_primitive()
             case "Y-DELTA":
+                #return 0
                 y_ground1 = 1 / self.ground_imp_1 if self.ground_imp_1 != 0 else complex("inf")
-                return 1 / (complex(self.rpu, self.xpu) + 1 / y_ground1) if y_ground1 else 0
+                sector =  1 / (complex(self.rpu, self.xpu) + 1 / y_ground1) if y_ground1 != complex("inf") else 0
+                y_matrix = [[sector, 0], [0, 0]]
+                df = pd.DataFrame(y_matrix, index=[self.bus1.name, self.bus2.name],
+                                  columns=[self.bus1.name, self.bus2.name])
+                return df
             case "DELTA-Y":
+                #return 0
                 y_ground2 = 1 / self.ground_imp_2 if self.ground_imp_2 != 0 else complex("inf")
-                return 1 / (complex(self.rpu, self.xpu) + 1 / y_ground2) if y_ground2 else 0
+                sector =  1 / (complex(self.rpu, self.xpu) + 1 / y_ground2) if y_ground2 != complex("inf") else 0
+                y_matrix = [[0, 0], [0, sector]]
+                df = pd.DataFrame(y_matrix, index=[self.bus1.name, self.bus2.name],
+                                  columns=[self.bus1.name, self.bus2.name])
+                return df
             case "DELTA-DELTA":
-                return 0
+                return pd.DataFrame([[0,0],[0,0]], index=[self.bus1.name, self.bus2.name],
+                                  columns=[self.bus1.name, self.bus2.name])
             case _:
                 raise ValueError(f"Unknown transformer connection type: {self.connection_type}")
     def __repr__(self):
