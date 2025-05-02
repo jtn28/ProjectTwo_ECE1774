@@ -73,7 +73,7 @@ class Solution:
             print("Newton-Raphson did not converge in allotted iterations.")
 
         return voltages
-
+'''
     def hourly_load_updates(self, load_multipliers: list):
         initial_powers = []
         voltage_results = []
@@ -167,7 +167,7 @@ class Solution:
          #   plt.show()
          #   bus_location += 1
         return
-
+''' # The commented out code is for Jack's Project 3, this has all of the last minutes updates I made however
 
 class SymFaultSolver:
     def __init__(self, circuit, prefault_voltages):
