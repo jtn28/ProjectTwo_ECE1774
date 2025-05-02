@@ -102,7 +102,8 @@ class Circuit:
         if sequence != "zero":
             for item in self.loads:
                 S = self.loads[item].real_power + 1j * self.loads[item].reactive_power
-                y_bus.loc[self.loads[item].bus.name, self.loads[item].bus.name] += S
+                I = np.conjugate(S / self.loads[item].bus.vpu)
+                y_bus.loc[self.loads[item].bus.name, self.loads[item].bus.name] += 1/(I/self.loads[item].bus.vpu)
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         return y_bus
@@ -131,7 +132,7 @@ class Circuit:
         if sequence != "zero":
             for item in self.loads:
                 S = self.loads[item].real_power + 1j * self.loads[item].reactive_power
-                y_bus.loc[self.loads[item].bus.name, self.loads[item].bus.name] += S
+                y_bus.loc[self.loads[item].bus.name, self.loads[item].bus.name] += 1/S
         # Currently here to make it easier to debug, remove print statement the final implementation
         #print(y_bus)
         z_bus_values = np.linalg.inv(y_bus.values)

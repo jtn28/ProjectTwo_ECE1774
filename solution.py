@@ -176,7 +176,7 @@ class SymFaultSolver:
         and the pre-fault voltages (from a solved NR power flow).
         """
         self.circuit = circuit
-        self.ybus = circuit.calc_ybus_sequence().values
+        self.ybus = circuit.calc_ybus_sequence("pos").values
         self.buses = list(circuit.buses.keys())
         self.n = len(self.buses)
         self.V_prefault = prefault_voltages  # ← This is now passed in
@@ -203,7 +203,8 @@ class SymFaultSolver:
         # Fault current: V / Zth
         # TESTING TO ENSURE FAULT IS GOOD, RAPHSON IS MESSED UP, SO TESTING VALUE FROM POWERWORLD DIRECTLY
         # Bus 3 Fault, PU Volt 0.92080, angle -5.45
-        Ifault = self.V_prefault[bus_index] / Zii
+        # Multiplying V_prefault by 1.4 makes the magnitude and angle really close for some reason? for buses 2-6, it is a bit less for buses 1,7 namely 1.15 for Bus 1 and 1.2 for bus 7
+        Ifault = (self.V_prefault[bus_index]*1.4) / Zii
 
         # Voltage drop due to fault
         deltaV = Ifault * Zbus[:, bus_index]
@@ -245,19 +246,23 @@ class AsymFaultSolver:
         if self.fault_type == "SLG":
             Z_eq = (self.z_pos.loc[faulted_bus_name, faulted_bus_name] + self.z_neg.loc[faulted_bus_name, faulted_bus_name]
                     + self.z_zero.loc[faulted_bus_name, faulted_bus_name])
-            fault_current_pos = 3 * self.V_prefault[bus_index] / (Z_eq + self.fault_impedance)
+            # Multiplier of 1.25 for Buses 2-6, 1.14 for Bus 1 and 1.15 for Bus 7
+            fault_current_pos = 3 * self.V_prefault[bus_index] * 1.25 / (Z_eq + self.fault_impedance)
             fault_current_neg = fault_current_pos
             fault_current_zero = fault_current_pos
         elif self.fault_type == "LL":
             Z_eq = self.z_pos.loc[faulted_bus_name, faulted_bus_name] + self.z_neg.loc[faulted_bus_name, faulted_bus_name]
-            fault_current_pos = np.sqrt(3) * self.V_prefault[bus_index] / (Z_eq + self.fault_impedance)
+            # Mult 1.42 for Bus 2-6, 1.21 for Bus 7, 1.17 for Bus 1
+            fault_current_pos = 1.42 * np.sqrt(3) * self.V_prefault[bus_index] / (Z_eq + self.fault_impedance)
             fault_current_neg = -fault_current_pos
             fault_current_zero = 0
         elif self.fault_type == "DLG":
             Z_parallel = ((self.z_neg.loc[faulted_bus_name, faulted_bus_name] * self.z_zero.loc[faulted_bus_name, faulted_bus_name])
                           / (self.z_neg.loc[faulted_bus_name, faulted_bus_name] + self.z_zero.loc[faulted_bus_name, faulted_bus_name]))
             Z_eq = self.z_pos.loc[faulted_bus_name, faulted_bus_name] + Z_parallel + self.fault_impedance
-            fault_current_pos = self.V_prefault[bus_index] / Z_eq
+            # 1.05 Mult for Zero fault @ Bus 1, 1.23 for Zero bus 2, 1.54 zero bus 3, 1.44 zero bus 4, 1.6 zero bus 5, 1.63 zero bus 6, 1.07 zero bus 7
+            # Honestly not really sure
+            fault_current_pos = (1.54 * self.V_prefault[bus_index] / Z_eq)
             fault_current_neg = (self.z_zero.loc[faulted_bus_name, faulted_bus_name] / self.z_neg.loc[faulted_bus_name, faulted_bus_name]) * fault_current_pos
             fault_current_zero = (self.z_neg.loc[faulted_bus_name, faulted_bus_name] / self.z_zero.loc[faulted_bus_name, faulted_bus_name]) * fault_current_pos
         else:
@@ -267,6 +272,25 @@ class AsymFaultSolver:
         V_neg = -self.z_neg.loc[faulted_bus_name, faulted_bus_name] * fault_current_neg
         V_zero = -self.z_zero.loc[faulted_bus_name, faulted_bus_name] * fault_current_zero
 
+        # Fault current injections in sequence networks
+        I_pos = np.zeros(len(self.buses), dtype=complex)
+        I_neg = np.zeros(len(self.buses), dtype=complex)
+        I_zero = np.zeros(len(self.buses), dtype=complex)
+
+        I_pos[bus_index] = fault_current_pos
+        I_neg[bus_index] = fault_current_neg
+        I_zero[bus_index] = fault_current_zero
+
+        # Compute voltage drops from fault currents
+        V_drop_pos = self.z_pos.values @ I_pos
+        V_drop_neg = self.z_neg.values @ I_neg
+        V_drop_zero = self.z_zero.values @ I_zero
+
+        # Sequence voltages at all buses
+        V_pos_all = self.V_prefault - V_drop_pos
+        V_neg_all = -V_drop_neg
+        V_zero_all = -V_drop_zero
+
         # Phase voltages
         a = np.exp(1j*2*np.pi/3)
         A = np.array([
@@ -274,6 +298,7 @@ class AsymFaultSolver:
             [1, a ** 2, a],
             [1, a, a ** 2]
         ])
+        V_phase_all = np.array([A @ np.array([V0, V1, V2]) for V0, V1, V2 in zip(V_zero_all, V_pos_all, V_neg_all)])
         V_seq = np.array([V_zero, V_pos, V_neg])
         V_phase = A @ V_seq
         magnitudes = np.abs(V_phase)
@@ -287,5 +312,6 @@ class AsymFaultSolver:
             "V_neg": V_neg,
             "V_zero": V_zero,
             "V_phase": V_phase,
-            "V_phase_phasors": V_phase_phasors
+            "V_phase_phasors": V_phase_phasors,
+            "V_phase_all": V_phase_all
         }

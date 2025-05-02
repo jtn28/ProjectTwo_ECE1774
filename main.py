@@ -25,7 +25,7 @@ for item in load_mult:
     load_mult[list_position] = item / 476650
     list_position += 1
 # Power_Flow and Fault_Study
-seven_circuit = Circuit('Seven Bus System', 'Power_Flow', "DLG", base_mva=100.0)
+seven_circuit = Circuit('Seven Bus System', 'Power_Flow', "SYM", base_mva=100.0)
 
 # Buses (types matched to diagram + data)
 seven_circuit.add_bus('Bus1', 125, bus_type='Slack')
@@ -189,6 +189,12 @@ elif seven_circuit.analysis_mode == 'Fault_Study' and seven_circuit.fault_type !
     phase_labels =['V pos', 'V neg', 'V zero']
     for phase_labels, (mag, angle) in zip(phase_labels, phasor_outputs):
         print(f"{phase_labels}: {mag:.4f} ∠ {angle:.2f}°")
+    print("Voltages during fault:")
+    for name, V_bus in zip(seven_circuit.buses.keys(), fault_results['V_phase_all']):
+        phases = ['A', 'B', 'C']
+        for phase, V in zip(phases, V_bus):
+            print(f"{name} Phase {phase}: |V| = {abs(V):.4f} pu, ∠ = {np.angle(V, deg=True):.2f}°")
+
 
 if seven_circuit.analysis_mode == "Power_Flow":
     print("\n==============================")
